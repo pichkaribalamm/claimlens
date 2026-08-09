@@ -1,1 +1,55 @@
+from typing import Optional
+from pydantic import BaseModel, Field, HttpUrl
 
+
+class Claim(BaseModel):
+    claim_number: str
+    text: str
+
+
+class ClaimElement(BaseModel):
+    id: str
+    claim_number: str
+    text: str
+    element_type: Optional[str] = None
+
+
+class TargetScope(BaseModel):
+    company: Optional[str] = None
+    product: Optional[str] = None
+    technology: Optional[str] = None
+
+
+class SearchQuery(BaseModel):
+    query: str
+    rationale: str
+    priority: int = Field(default=1, ge=1, le=5)
+
+
+class SearchResult(BaseModel):
+    title: str
+    url: HttpUrl
+    snippet: Optional[str] = None
+    source: Optional[str] = None
+
+
+class Evidence(BaseModel):
+    excerpt: str
+    url: HttpUrl
+    title: str
+    source_type: Optional[str] = None
+    relevance_score: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=1
+    )
+
+
+class ClaimMapping(BaseModel):
+    claim_element_id: str
+    evidence: list[Evidence]
+    reasoning: str
+    confidence: float = Field(
+        ge=0,
+        le=1
+    )
