@@ -111,3 +111,78 @@ ClaimMapping[]
 Output
 
 ClaimAnalysisReport
+
+
+## Data Contracts
+
+### Claim
+
+Contains:
+
+- Claim number
+- Raw text
+
+---
+
+### ClaimElement
+
+Contains:
+
+- ID
+- Parent claim
+- Text
+- Keywords (optional, later)
+
+---
+
+### TargetScope
+
+Contains:
+
+- Company
+- Product
+- Technology
+
+---
+
+### SearchQuery
+
+Contains:
+
+- Query
+- Rationale
+- Priority
+
+---
+
+### SearchResult
+
+Contains:
+
+- Title
+- URL
+- Snippet
+- Source
+
+---
+
+### Evidence
+
+Contains:
+
+- Excerpt
+- URL
+- Title
+- Confidence
+- Source type
+
+---
+
+### ClaimMapping
+
+Contains:
+
+- Claim element
+- Evidence
+- Reasoning
+- Confidence
