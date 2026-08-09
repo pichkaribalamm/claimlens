@@ -53,3 +53,6 @@ class ClaimMapping(BaseModel):
         ge=0,
         le=1
     )
+
+class ClaimParseResult(BaseModel):
+    elements: list[ClaimElement]
