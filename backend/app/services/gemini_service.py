@@ -21,7 +21,7 @@ class GeminiService:
 
     def generate(self, prompt: str, response_schema):
         response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=prompt,
             config={
                 "response_mime_type": "application/json",
