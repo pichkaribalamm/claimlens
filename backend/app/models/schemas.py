@@ -56,3 +56,11 @@ class ClaimMapping(BaseModel):
 
 class ClaimParseResult(BaseModel):
     elements: list[ClaimElement]
+
+class TechnologyProfile(BaseModel):
+    claim_element_id: str
+    target: TargetScope
+    core_concept: str
+    technical_concepts: list[str]
+    alternative_terminology: list[str]
+    likely_components: list[str]
