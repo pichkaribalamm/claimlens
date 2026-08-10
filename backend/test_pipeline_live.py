@@ -1,3 +1,7 @@
+import os
+
+os.environ["CLAIMLENS_USE_MOCK_GEMINI"] = "true"
+
 from app.agents.claim_analyzer import ClaimAnalyzer
 from app.agents.claim_mapper import ClaimMapper
 from app.agents.claim_parser import ClaimParser
@@ -27,6 +31,7 @@ target = TargetScope(
     product="Galaxy S26 Ultra",
 )
 
+
 print("\n=== CLAIM PARSER ===")
 
 parser = ClaimParser()
@@ -38,8 +43,8 @@ print(f"Elements found: {len(parsed_claim.elements)}")
 for element in parsed_claim.elements:
     print(f"- {element.id}: {element.text}")
 
-
 element = parsed_claim.elements[0]
+
 
 print("\n=== TECHNOLOGY PROFILER ===")
 
@@ -85,7 +90,6 @@ for query in search_plan.queries[:2]:
 
     all_search_results.extend(results)
 
-
 print(
     f"\nTotal search results collected: "
     f"{len(all_search_results)}"
@@ -124,7 +128,6 @@ for search_result in all_search_results[:5]:
             f"{search_result.url}"
         )
         print(f"Reason: {exc}")
-
 
 print(
     f"\nPotential evidence findings: "
@@ -167,7 +170,6 @@ for evidence in potential_evidence:
                 verification=verification,
             )
         )
-
 
 print(
     f"\nVerified evidence: "
