@@ -5,7 +5,7 @@ from app.models.schemas import ClaimElement, Evidence
 claim_element = ClaimElement(
     id="1.2",
     claim_number="1",
-    text="an AI image signal processor (ISP) associated with the front camera"
+    text="a processor configured to receive image data"
 )
 
 evidence = Evidence(
@@ -13,16 +13,13 @@ evidence = Evidence(
     source_title="Samsung Galaxy S26 Ultra",
     url="https://www.samsung.com/in/smartphones/galaxy-s26-ultra/",
     excerpt=(
-        "Galaxy S26 Ultra's front camera now features an AI image "
-        "signal processor (ISP) for more natural selfies with "
-        "highlights and shadows where they should be — true to "
-        "your natural skin tone and other details such as hair "
-        "and eyebrows, just as your eyes see them."
+        "High-resolution image data is analyzed in real time "
+        "to maintain crisp textures and clarity across the whole "
+        "scene for rich, true-to-life photos."
     ),
     evidence_type="direct",
     relevance=(
-        "The source explicitly confirms that the front camera "
-        "features an AI image signal processor (ISP)."
+        "The source discusses image data processing in the target device."
     )
 )
 
