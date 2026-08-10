@@ -129,246 +129,246 @@ def mock_gemini_generate(prompt, response_schema):
     )
 
 
-claim = Claim(
-    claim_number="1",
-    text=(
-        "A device comprising a processor configured to receive "
-        "image data."
-    ),
-)
+with patch(
+    "app.services.gemini_service.GeminiService.generate",
+    side_effect=mock_gemini_generate,
+):
 
-target = TargetScope(
-    company="Samsung",
-    product="Galaxy S26 Ultra",
-)
-
-
-print("\n=== CLAIM PARSER ===")
-
-parser = ClaimParser()
-
-parsed_claim = parser.parse(claim)
-
-print(f"Elements found: {len(parsed_claim.elements)}")
-
-for element in parsed_claim.elements:
-    print(f"- {element.id}: {element.text}")
-
-element = parsed_claim.elements[0]
-
-
-print("\n=== TECHNOLOGY PROFILER ===")
-
-profiler = TechnologyProfiler()
-
-technology_profile = profiler.profile(
-    element,
-    target,
-)
-
-print(
-    f"Core concept: "
-    f"{technology_profile.core_concept}"
-)
-
-
-print("\n=== SEARCH PLANNER ===")
-
-planner = SearchPlanner()
-
-search_plan = planner.plan(
-    element,
-    target,
-    technology_profile,
-)
-
-print(
-    f"Queries generated: "
-    f"{len(search_plan.queries)}"
-)
-
-for query in search_plan.queries:
-    print(
-        f"- [{query.priority}] "
-        f"{query.query}"
+    claim = Claim(
+        claim_number="1",
+        text=(
+            "A device comprising a processor configured to receive "
+            "image data."
+        ),
     )
 
-
-print("\n=== SEARCH SERVICE ===")
-
-search_service = SearchService()
-
-all_search_results = []
-
-for query in search_plan.queries[:2]:
-
-    results = search_service.search(query)
-
-    print(
-        f"\nQuery: {query.query}"
-        f"\nResults: {len(results)}"
+    target = TargetScope(
+        company="Samsung",
+        product="Galaxy S26 Ultra",
     )
 
-    all_search_results.extend(results)
+    print("\n=== CLAIM PARSER ===")
 
+    parser = ClaimParser()
 
-print(
-    f"\nTotal search results collected: "
-    f"{len(all_search_results)}"
-)
+    parsed_claim = parser.parse(claim)
 
+    print(
+        f"Elements found: "
+        f"{len(parsed_claim.elements)}"
+    )
 
-print("\n=== PAGE FETCH + EVIDENCE EXTRACTION ===")
-
-fetcher = PageFetcher()
-extractor = EvidenceExtractor()
-
-potential_evidence = []
-
-for search_result in all_search_results[:5]:
-
-    try:
-
-        page_content = fetcher.fetch(
-            search_result
+    for element in parsed_claim.elements:
+        print(
+            f"- {element.id}: "
+            f"{element.text}"
         )
 
-        evidence = extractor.extract(
-            element,
-            search_result,
-            page_content,
+    element = parsed_claim.elements[0]
+
+    print("\n=== TECHNOLOGY PROFILER ===")
+
+    profiler = TechnologyProfiler()
+
+    technology_profile = profiler.profile(
+        element,
+        target,
+    )
+
+    print(
+        f"Core concept: "
+        f"{technology_profile.core_concept}"
+    )
+
+    print("\n=== SEARCH PLANNER ===")
+
+    planner = SearchPlanner()
+
+    search_plan = planner.plan(
+        element,
+        target,
+        technology_profile,
+    )
+
+    print(
+        f"Queries generated: "
+        f"{len(search_plan.queries)}"
+    )
+
+    for query in search_plan.queries:
+        print(
+            f"- [{query.priority}] "
+            f"{query.query}"
         )
 
-        if evidence:
+    print("\n=== SEARCH SERVICE ===")
 
-            potential_evidence.extend(
-                evidence
+    search_service = SearchService()
+
+    all_search_results = []
+
+    for query in search_plan.queries[:2]:
+
+        results = search_service.search(query)
+
+        print(
+            f"\nQuery: {query.query}"
+            f"\nResults: {len(results)}"
+        )
+
+        all_search_results.extend(results)
+
+    print(
+        f"\nTotal search results collected: "
+        f"{len(all_search_results)}"
+    )
+
+    print(
+        "\n=== PAGE FETCH + EVIDENCE EXTRACTION ==="
+    )
+
+    fetcher = PageFetcher()
+    extractor = EvidenceExtractor()
+
+    potential_evidence = []
+
+    for search_result in all_search_results[:5]:
+
+        try:
+
+            page_content = fetcher.fetch(
+                search_result
+            )
+
+            evidence = extractor.extract(
+                element,
+                search_result,
+                page_content,
+            )
+
+            if evidence:
+
+                potential_evidence.extend(
+                    evidence
+                )
+
+                print(
+                    f"\nEvidence found: "
+                    f"{search_result.title}"
+                )
+
+        except Exception as exc:
+
+            print(
+                f"\nSkipping source: "
+                f"{search_result.url}"
             )
 
             print(
-                f"\nEvidence found: "
-                f"{search_result.title}"
+                f"Reason: {exc}"
             )
 
-    except Exception as exc:
-
-        print(
-            f"\nSkipping source: "
-            f"{search_result.url}"
-        )
-
-        print(
-            f"Reason: {exc}"
-        )
-
-
-print(
-    f"\nPotential evidence findings: "
-    f"{len(potential_evidence)}"
-)
-
-
-print("\n=== EVIDENCE VERIFICATION ===")
-
-verifier = EvidenceVerifier()
-
-verified_evidence = []
-
-for evidence in potential_evidence:
-
-    verification = verifier.verify(
-        element,
-        evidence,
+    print(
+        f"\nPotential evidence findings: "
+        f"{len(potential_evidence)}"
     )
 
+    print("\n=== EVIDENCE VERIFICATION ===")
+
+    verifier = EvidenceVerifier()
+
+    verified_evidence = []
+
+    for evidence in potential_evidence:
+
+        verification = verifier.verify(
+            element,
+            evidence,
+        )
+
+        print(
+            f"\nSource: "
+            f"{evidence.source_title}"
+        )
+
+        print(
+            f"Supported: "
+            f"{verification.evidence_supported}"
+        )
+
+        print(
+            f"Confidence: "
+            f"{verification.confidence}"
+        )
+
+        if verification.evidence_supported:
+
+            verified_evidence.append(
+                VerifiedEvidence(
+                    evidence=evidence,
+                    verification=verification,
+                )
+            )
+
     print(
-        f"\nSource: "
-        f"{evidence.source_title}"
+        f"\nVerified evidence: "
+        f"{len(verified_evidence)}"
+    )
+
+    print("\n=== CLAIM MAPPING ===")
+
+    mapper = ClaimMapper()
+
+    mapping = mapper.map(
+        element,
+        verified_evidence,
     )
 
     print(
         f"Supported: "
-        f"{verification.evidence_supported}"
+        f"{mapping.supported}"
     )
 
     print(
         f"Confidence: "
-        f"{verification.confidence}"
+        f"{mapping.confidence}"
     )
 
-    if verification.evidence_supported:
+    print(
+        f"Evidence count: "
+        f"{len(mapping.evidence)}"
+    )
 
-        verified_evidence.append(
-            VerifiedEvidence(
-                evidence=evidence,
-                verification=verification,
-            )
-        )
+    print(
+        f"Reasoning: "
+        f"{mapping.reasoning}"
+    )
 
+    print("\n=== CLAIM ANALYSIS ===")
 
-print(
-    f"\nVerified evidence: "
-    f"{len(verified_evidence)}"
-)
+    analyzer = ClaimAnalyzer()
 
+    analysis = analyzer.analyze(
+        claim,
+        [mapping],
+    )
 
-print("\n=== CLAIM MAPPING ===")
+    print(
+        f"Claim: "
+        f"{analysis.claim_number}"
+    )
 
-mapper = ClaimMapper()
+    print(
+        f"Coverage status: "
+        f"{analysis.coverage_status}"
+    )
 
-mapping = mapper.map(
-    element,
-    verified_evidence,
-)
+    print(
+        f"Confidence: "
+        f"{analysis.confidence}"
+    )
 
-
-print(
-    f"Supported: "
-    f"{mapping.supported}"
-)
-
-print(
-    f"Confidence: "
-    f"{mapping.confidence}"
-)
-
-print(
-    f"Evidence count: "
-    f"{len(mapping.evidence)}"
-)
-
-print(
-    f"Reasoning: "
-    f"{mapping.reasoning}"
-)
-
-
-print("\n=== CLAIM ANALYSIS ===")
-
-analyzer = ClaimAnalyzer()
-
-analysis = analyzer.analyze(
-    claim,
-    [mapping],
-)
-
-
-print(
-    f"Claim: "
-    f"{analysis.claim_number}"
-)
-
-print(
-    f"Coverage status: "
-    f"{analysis.coverage_status}"
-)
-
-print(
-    f"Confidence: "
-    f"{analysis.confidence}"
-)
-
-print(
-    f"Reasoning: "
-    f"{analysis.reasoning}"
-)
+    print(
+        f"Reasoning: "
+        f"{analysis.reasoning}"
+    )
