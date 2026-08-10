@@ -2,6 +2,7 @@ from app.models.schemas import (
     ClaimElement,
     SearchResult,
     Evidence,
+    EvidenceExtractionResult,
 )
 from app.services.gemini_service import GeminiService
 
@@ -70,10 +71,9 @@ PAGE CONTENT:
 
         result = self.llm.generate(
             prompt=prompt,
-            response_schema=list[Evidence],
+            response_schema=EvidenceExtractionResult,
         )
 
-        return [
-            Evidence.model_validate(item)
-            for item in __import__("json").loads(result)
-        ]
+        parsed = EvidenceExtractionResult.model_validate_json(result)
+
+        return parsed.evidence
