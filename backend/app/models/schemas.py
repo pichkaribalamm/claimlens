@@ -83,3 +83,11 @@ class EvidenceVerificationResult(BaseModel):
     evidence_supported: bool
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str
+
+
+class ClaimElementMapping(BaseModel):
+    claim_element_id: str
+    supported: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    evidence: list[Evidence]
+    reasoning: str
