@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from app.agents.claim_mapper import ClaimMapper
 from app.models.schemas import (
     ClaimElement,
@@ -45,17 +47,50 @@ def test_claim_mapper():
         verification=verification,
     )
 
-    mapper = ClaimMapper()
+    fake_gemini_response = """
+    {
+        "claim_element_id": "1.2",
+        "supported": true,
+        "confidence": 0.98,
+        "evidence": [
+            {
+                "claim_element_id": "1.2",
+                "source_title": "Samsung Galaxy S26 Ultra",
+                "url": "https://www.samsung.com/in/smartphones/galaxy-s26-ultra/",
+                "excerpt": "Galaxy S26 Ultra's front camera now features an AI image signal processor (ISP)",
+                "evidence_type": "direct",
+                "relevance": "The source explicitly confirms that the front camera features an AI image signal processor (ISP)."
+            }
+        ],
+        "reasoning": "The verified evidence directly supports the claim element."
+    }
+    """
 
-    result = mapper.map(
-        element,
-        [verified_evidence]
-    )
+    with patch(
+        "app.agents.claim_mapper.GeminiService"
+    ) as mock_gemini:
+
+        mock_gemini.return_value.generate.return_value = (
+            fake_gemini_response
+        )
+
+        mapper = ClaimMapper()
+
+        result = mapper.map(
+            element,
+            [verified_evidence]
+        )
 
     assert result.claim_element_id == "1.2"
-    assert result.supported is False
-    assert result.confidence == 0.0
-    assert result.evidence == []
-    assert result.reasoning == (
-        "Claim mapping not yet implemented."
+    assert result.supported is True
+    assert result.confidence == 0.98
+    assert len(result.evidence) == 1
+    assert result.evidence[0].claim_element_id == "1.2"
+    assert result.evidence[0].source_title == (
+        "Samsung Galaxy S26 Ultra"
     )
+    assert result.reasoning == (
+        "The verified evidence directly supports the claim element."
+    )
+
+    mock_gemini.return_value.generate.assert_called_once()
