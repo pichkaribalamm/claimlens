@@ -7,9 +7,10 @@ class EvidenceExtractor:
         self,
         claim_element: ClaimElement,
         search_result: SearchResult,
+        page_content: str,
     ) -> list[Evidence]:
         """
-        Extract evidence from a search result for a claim element.
+        Extract evidence from page content for a claim element.
 
         AI-powered evidence extraction will be added in the next step.
         """
