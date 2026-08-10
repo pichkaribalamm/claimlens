@@ -4,3 +4,4 @@ python-dotenv
 pydantic
 google-genai
 pytest
+ddgs==9.14.4
