@@ -34,3 +34,7 @@ for term in result.alternative_terminology:
 print("\nLIKELY COMPONENTS:")
 for component in result.likely_components:
     print(f"- {component}")
+
+print("\nIMPLEMENTATION HYPOTHESES:")
+for hypothesis in result.implementation_hypotheses:
+    print(f"- {hypothesis}")
