@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from app.agents.evidence_verifier import EvidenceVerifier
 from app.models.schemas import ClaimElement, Evidence
 
@@ -25,16 +27,37 @@ def test_evidence_verifier():
         )
     )
 
-    verifier = EvidenceVerifier()
+    fake_gemini_response = """
+    {
+        "claim_element_id": "1.2",
+        "evidence_supported": true,
+        "confidence": 0.98,
+        "reasoning": "The excerpt explicitly states that the front camera features an AI image signal processor (ISP), directly supporting the claim element."
+    }
+    """
 
-    result = verifier.verify(
-        element,
-        evidence
-    )
+    with patch(
+        "app.agents.evidence_verifier.GeminiService"
+    ) as mock_gemini:
+
+        mock_gemini.return_value.generate.return_value = (
+            fake_gemini_response
+        )
+
+        verifier = EvidenceVerifier()
+
+        result = verifier.verify(
+            element,
+            evidence
+        )
 
     assert result.claim_element_id == "1.2"
-    assert result.evidence_supported is False
-    assert result.confidence == 0.0
+    assert result.evidence_supported is True
+    assert result.confidence == 0.98
     assert result.reasoning == (
-        "Verification not yet implemented."
+        "The excerpt explicitly states that the front camera "
+        "features an AI image signal processor (ISP), directly "
+        "supporting the claim element."
     )
+
+    mock_gemini.return_value.generate.assert_called_once()
