@@ -48,7 +48,7 @@ def test_search_planner():
         "claim_element_id": "1.1",
         "queries": [
             {
-                "query": "\"Samsung Galaxy S26 Ultra\" image processor",
+                "query": "Samsung Galaxy S26 Ultra image processor",
                 "rationale": "Search for product-specific information about image processing.",
                 "priority": 1
             },
