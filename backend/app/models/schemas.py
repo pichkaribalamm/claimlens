@@ -43,6 +43,20 @@ class Evidence(BaseModel):
     relevance: str
 
 
+class ClaimMapping(BaseModel):
+    claim_element_id: str
+    evidence: list[Evidence]
+    reasoning: str
+    confidence: float = Field(
+        ge=0,
+        le=1
+    )
+
+
+class ClaimParseResult(BaseModel):
+    elements: list[ClaimElement]
+
+
 class TechnologyProfile(BaseModel):
     claim_element_id: str
     target: TargetScope
