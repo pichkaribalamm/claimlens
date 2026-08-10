@@ -19,6 +19,116 @@ from app.services.search_service import SearchService
 from app.services.page_fetcher import PageFetcher
 
 
+def mock_gemini_generate(prompt, response_schema):
+
+    schema_name = response_schema.__name__
+
+    if schema_name == "ClaimParseResult":
+        return """
+        {
+            "elements": [
+                {
+                    "id": "1.1",
+                    "claim_number": "1",
+                    "text": "a processor configured to receive image data"
+                }
+            ]
+        }
+        """
+
+    if schema_name == "TechnologyProfile":
+        return """
+        {
+            "claim_element_id": "1.1",
+            "target": {
+                "company": "Samsung",
+                "product": "Galaxy S26 Ultra",
+                "technology": null
+            },
+            "core_concept": "Processor receiving image data",
+            "technical_concepts": [
+                "image data ingestion",
+                "camera interface",
+                "image signal processing"
+            ],
+            "alternative_terminology": [
+                "image signal processor",
+                "ISP",
+                "camera interface controller"
+            ],
+            "likely_components": [
+                "processor",
+                "image signal processor",
+                "camera interface controller"
+            ],
+            "implementation_hypotheses": [
+                "The target may use a processor or ISP to receive image data from a camera subsystem."
+            ]
+        }
+        """
+
+    if schema_name == "SearchPlan":
+        return """
+        {
+            "claim_element_id": "1.1",
+            "queries": [
+                {
+                    "query": "Samsung Galaxy S26 Ultra processor image data camera ISP",
+                    "rationale": "Find product-specific evidence concerning image data processing.",
+                    "priority": 1
+                },
+                {
+                    "query": "Samsung Galaxy S26 Ultra image signal processor camera",
+                    "rationale": "Find evidence concerning the target's image signal processing architecture.",
+                    "priority": 2
+                }
+            ],
+            "preferred_sources": [
+                "samsung.com",
+                "qualcomm.com"
+            ],
+            "search_strategy": "Search authoritative product and processor sources for evidence concerning image data processing."
+        }
+        """
+
+    if schema_name == "EvidenceVerificationResult":
+        return """
+        {
+            "claim_element_id": "1.1",
+            "evidence_supported": false,
+            "confidence": 0.90,
+            "reasoning": "The available excerpt does not explicitly establish that a processor is configured to receive image data."
+        }
+        """
+
+    if schema_name == "ClaimElementMapping":
+        return """
+        {
+            "claim_element_id": "1.1",
+            "supported": false,
+            "confidence": 0.0,
+            "evidence": [],
+            "reasoning": "No verified evidence supports this claim element."
+        }
+        """
+
+    if schema_name == "Evidence":
+        return """
+        {
+            "claim_element_id": "1.1",
+            "source_title": "Mock Source",
+            "url": "https://example.com",
+            "excerpt": "Mock evidence excerpt.",
+            "evidence_type": "direct",
+            "relevance": "Mock evidence."
+        }
+        """
+
+    raise ValueError(
+        f"Unexpected response schema: {schema_name}"
+    )
+
+
 claim = Claim(
     claim_number="1",
     text=(
@@ -56,7 +166,10 @@ technology_profile = profiler.profile(
     target,
 )
 
-print(f"Core concept: {technology_profile.core_concept}")
+print(
+    f"Core concept: "
+    f"{technology_profile.core_concept}"
+)
 
 
 print("\n=== SEARCH PLANNER ===")
@@ -69,10 +182,16 @@ search_plan = planner.plan(
     technology_profile,
 )
 
-print(f"Queries generated: {len(search_plan.queries)}")
+print(
+    f"Queries generated: "
+    f"{len(search_plan.queries)}"
+)
 
 for query in search_plan.queries:
-    print(f"- [{query.priority}] {query.query}")
+    print(
+        f"- [{query.priority}] "
+        f"{query.query}"
+    )
 
 
 print("\n=== SEARCH SERVICE ===")
@@ -163,7 +282,8 @@ for evidence in potential_evidence:
     )
 
     print(
-        f"\nSource: {evidence.source_title}"
+        f"\nSource: "
+        f"{evidence.source_title}"
     )
 
     print(
