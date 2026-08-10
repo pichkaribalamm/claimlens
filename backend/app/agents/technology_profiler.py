@@ -33,15 +33,21 @@ IMPORTANT:
 3. Identify alternative terminology that manufacturers,
    engineers, technical documentation, or reviewers might
    use to describe the same or closely related concept.
-4. Identify likely hardware, software, or system components
-   where this functionality could be implemented.
-5. Do not search the web.
-6. Do not determine whether the target actually practices
+4. Identify generic hardware, software, or system components
+   that are commonly associated with implementing the claimed
+   functionality. Do not assume that these components are
+   present in the target.
+5. Identify possible target-specific implementation hypotheses
+   that could be investigated later. These are hypotheses only
+   and must not be presented as established facts about the
+   target.
+6. Do not search the web.
+7. Do not determine whether the target actually practices
    the claim.
-7. Do not invent target-specific facts.
-8. Keep the analysis technically grounded in the claim
+8. Do not invent target-specific facts.
+9. Keep the analysis technically grounded in the claim
    element itself.
-9. Return only the requested structured output.
+10. Return only the requested structured output.
 
 CLAIM ELEMENT:
 
