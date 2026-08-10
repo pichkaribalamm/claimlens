@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 os.environ["CLAIMLENS_USE_MOCK_GEMINI"] = "true"
 
@@ -81,6 +82,7 @@ search_service = SearchService()
 all_search_results = []
 
 for query in search_plan.queries[:2]:
+
     results = search_service.search(query)
 
     print(
@@ -89,6 +91,7 @@ for query in search_plan.queries[:2]:
     )
 
     all_search_results.extend(results)
+
 
 print(
     f"\nTotal search results collected: "
@@ -106,7 +109,10 @@ potential_evidence = []
 for search_result in all_search_results[:5]:
 
     try:
-        page_content = fetcher.fetch(search_result)
+
+        page_content = fetcher.fetch(
+            search_result
+        )
 
         evidence = extractor.extract(
             element,
@@ -115,7 +121,10 @@ for search_result in all_search_results[:5]:
         )
 
         if evidence:
-            potential_evidence.extend(evidence)
+
+            potential_evidence.extend(
+                evidence
+            )
 
             print(
                 f"\nEvidence found: "
@@ -123,11 +132,16 @@ for search_result in all_search_results[:5]:
             )
 
     except Exception as exc:
+
         print(
             f"\nSkipping source: "
             f"{search_result.url}"
         )
-        print(f"Reason: {exc}")
+
+        print(
+            f"Reason: {exc}"
+        )
+
 
 print(
     f"\nPotential evidence findings: "
@@ -171,6 +185,7 @@ for evidence in potential_evidence:
             )
         )
 
+
 print(
     f"\nVerified evidence: "
     f"{len(verified_evidence)}"
@@ -185,6 +200,7 @@ mapping = mapper.map(
     element,
     verified_evidence,
 )
+
 
 print(
     f"Supported: "
@@ -215,6 +231,7 @@ analysis = analyzer.analyze(
     claim,
     [mapping],
 )
+
 
 print(
     f"Claim: "
