@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from app.agents.technology_profiler import TechnologyProfiler
 from app.models.schemas import ClaimElement, TargetScope
 
@@ -15,13 +17,56 @@ def test_technology_profiler():
         product="Galaxy S26 Ultra"
     )
 
-    profiler = TechnologyProfiler()
+    fake_gemini_response = """
+    {
+        "claim_element_id": "1.1",
+        "target": {
+            "company": "Samsung",
+            "product": "Galaxy S26 Ultra",
+            "technology": null
+        },
+        "core_concept": "Processor reception of image data",
+        "technical_concepts": [
+            "Image Signal Processing",
+            "MIPI CSI"
+        ],
+        "alternative_terminology": [
+            "ISP",
+            "Image Processor"
+        ],
+        "likely_components": [
+            "Image Signal Processor",
+            "Camera Interface"
+        ]
+    }
+    """
 
-    result = profiler.profile(element, target)
+    with patch(
+        "app.agents.technology_profiler.GeminiService"
+    ) as mock_gemini:
 
-    assert result["claim_element_id"] == "1.1"
-    assert result["claim_element"] == (
-        "a processor configured to receive image data"
+        mock_gemini.return_value.generate.return_value = (
+            fake_gemini_response
+        )
+
+        profiler = TechnologyProfiler()
+
+        result = profiler.profile(
+            element,
+            target
+        )
+
+    assert result.claim_element_id == "1.1"
+    assert result.target.company == "Samsung"
+    assert result.target.product == "Galaxy S26 Ultra"
+
+    assert result.core_concept == (
+        "Processor reception of image data"
     )
-    assert result["target"]["company"] == "Samsung"
-    assert result["target"]["product"] == "Galaxy S26 Ultra"
+
+    assert "Image Signal Processing" in result.technical_concepts
+    assert "MIPI CSI" in result.technical_concepts
+
+    assert "ISP" in result.alternative_terminology
+
+    assert "Image Signal Processor" in result.likely_components
