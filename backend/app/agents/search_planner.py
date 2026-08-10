@@ -97,6 +97,9 @@ Alternative terminology:
 
 Likely components:
 {technology_profile.likely_components}
+
+Implementation hypotheses:
+{technology_profile.implementation_hypotheses}
 """
 
         result = self.llm.generate(
