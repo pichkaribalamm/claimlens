@@ -1,5 +1,10 @@
 from app.agents.claim_mapper import ClaimMapper
-from app.models.schemas import ClaimElement, Evidence
+from app.models.schemas import (
+    ClaimElement,
+    Evidence,
+    EvidenceVerificationResult,
+    VerifiedEvidence,
+)
 
 
 def test_claim_mapper():
@@ -25,11 +30,26 @@ def test_claim_mapper():
         )
     )
 
+    verification = EvidenceVerificationResult(
+        claim_element_id="1.2",
+        evidence_supported=True,
+        confidence=0.98,
+        reasoning=(
+            "The evidence excerpt explicitly states that the front "
+            "camera features an AI image signal processor (ISP)."
+        )
+    )
+
+    verified_evidence = VerifiedEvidence(
+        evidence=evidence,
+        verification=verification,
+    )
+
     mapper = ClaimMapper()
 
     result = mapper.map(
         element,
-        [evidence]
+        [verified_evidence]
     )
 
     assert result.claim_element_id == "1.2"
