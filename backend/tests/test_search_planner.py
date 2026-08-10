@@ -51,6 +51,16 @@ def test_search_planner():
     )
 
     assert result.claim_element_id == "1.1"
-    assert result.queries == []
-    assert result.preferred_sources == []
-    assert result.search_strategy == ""
+assert len(result.queries) == 2
+
+assert result.queries[0].query == (
+    "Samsung Galaxy S26 Ultra image processor"
+)
+
+assert result.queries[0].priority == 1
+
+assert "Samsung official documentation" in (
+    result.preferred_sources
+)
+
+assert "product-specific" in result.search_strategy
