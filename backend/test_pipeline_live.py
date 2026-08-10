@@ -91,13 +91,29 @@ def mock_gemini_generate(prompt, response_schema):
         }
         """
 
+    if schema_name == "EvidenceExtractionResult":
+        return """
+        {
+            "evidence": [
+                {
+                    "claim_element_id": "1.1",
+                    "source_title": "Samsung Galaxy S26 Ultra",
+                    "url": "https://www.samsung.com/in/smartphones/galaxy-s26-ultra/",
+                    "excerpt": "Galaxy S26 Ultra's front camera now features an AI image signal processor (ISP)",
+                    "evidence_type": "direct",
+                    "relevance": "The source explicitly identifies an image signal processor associated with the camera."
+                }
+            ]
+        }
+        """
+
     if schema_name == "EvidenceVerificationResult":
         return """
         {
             "claim_element_id": "1.1",
             "evidence_supported": false,
             "confidence": 0.90,
-            "reasoning": "The available excerpt does not explicitly establish that a processor is configured to receive image data."
+            "reasoning": "The available excerpt identifies an image signal processor associated with the camera, but it does not explicitly establish that the processor is configured to receive image data."
         }
         """
 
@@ -109,18 +125,6 @@ def mock_gemini_generate(prompt, response_schema):
             "confidence": 0.0,
             "evidence": [],
             "reasoning": "No verified evidence supports this claim element."
-        }
-        """
-
-    if schema_name == "Evidence":
-        return """
-        {
-            "claim_element_id": "1.1",
-            "source_title": "Mock Source",
-            "url": "https://example.com",
-            "excerpt": "Mock evidence excerpt.",
-            "evidence_type": "direct",
-            "relevance": "Mock evidence."
         }
         """
 
