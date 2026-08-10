@@ -7,4 +7,4 @@ pytest
 ddgs==9.14.4
 requests==2.34.2
 beautifulsoup4==4.15.0
-openai
+openai==2.53.0
