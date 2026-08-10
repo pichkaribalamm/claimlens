@@ -35,11 +35,10 @@ def test_search_planner():
             "Image Signal Processor",
             "Camera Interface"
         ],
-
-            implementation_hypotheses=[
-        "The target may use a dedicated ISP",
-        "The target may receive camera data through MIPI CSI"
-    ]
+        implementation_hypotheses=[
+            "The target may use a dedicated ISP",
+            "The target may receive camera data through MIPI CSI"
+        ]
     )
 
     planner = SearchPlanner()
@@ -54,13 +53,13 @@ def test_search_planner():
     assert len(result.queries) == 2
 
     assert result.queries[0].query == (
-    "Samsung Galaxy S26 Ultra image processor"
-)
+        "Samsung Galaxy S26 Ultra image processor"
+    )
 
     assert result.queries[0].priority == 1
 
     assert "Samsung official documentation" in (
-    result.preferred_sources
-)
+        result.preferred_sources
+    )
 
     assert "product-specific" in result.search_strategy
