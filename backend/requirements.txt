@@ -5,5 +5,5 @@ pydantic
 google-genai
 pytest
 ddgs==9.14.4
-requests
-beautifulsoup4
+requests==2.34.2
+beautifulsoup4==4.15.0
