@@ -64,3 +64,9 @@ class TechnologyProfile(BaseModel):
     technical_concepts: list[str]
     alternative_terminology: list[str]
     likely_components: list[str]
+
+class SearchPlan(BaseModel):
+    claim_element_id: str
+    queries: list[SearchQuery]
+    preferred_sources: list[str]
+    search_strategy: str
