@@ -95,3 +95,10 @@ class ClaimElementMapping(BaseModel):
 class VerifiedEvidence(BaseModel):
     evidence: Evidence
     verification: EvidenceVerificationResult
+
+class ClaimAnalysisResult(BaseModel):
+    claim_number: str
+    coverage_status: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    element_mappings: list[ClaimElementMapping]
+    reasoning: str
