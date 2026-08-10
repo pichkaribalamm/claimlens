@@ -73,5 +73,13 @@ class SearchPlan(BaseModel):
     preferred_sources: list[str]
     search_strategy: str
 
+
 class EvidenceExtractionResult(BaseModel):
     evidence: list[Evidence]
+
+
+class EvidenceVerificationResult(BaseModel):
+    claim_element_id: str
+    evidence_supported: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    reasoning: str
