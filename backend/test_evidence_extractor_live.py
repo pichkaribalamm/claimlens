@@ -6,8 +6,9 @@ from app.services.page_fetcher import PageFetcher
 claim_element = ClaimElement(
     id="1.2",
     claim_number="1",
-    text="a processor configured to receive image data"
+    text="an AI image signal processor (ISP) associated with the front camera"
 )
+
 
 search_result = SearchResult(
     title="Samsung Galaxy S26 Ultra",
@@ -15,6 +16,7 @@ search_result = SearchResult(
     snippet="The Galaxy S26 Ultra uses a customized processor.",
     source="Samsung"
 )
+
 
 fetcher = PageFetcher()
 
@@ -27,6 +29,7 @@ evidence = extractor.extract(
     search_result,
     page_content,
 )
+
 
 print("\n=== EVIDENCE FINDINGS ===")
 
