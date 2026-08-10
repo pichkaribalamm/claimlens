@@ -34,28 +34,13 @@ class SearchResult(BaseModel):
 
 
 class Evidence(BaseModel):
-    excerpt: str
-    url: HttpUrl
-    title: str
-    source_type: Optional[str] = None
-    relevance_score: Optional[float] = Field(
-        default=None,
-        ge=0,
-        le=1
-    )
-
-
-class ClaimMapping(BaseModel):
     claim_element_id: str
-    evidence: list[Evidence]
-    reasoning: str
-    confidence: float = Field(
-        ge=0,
-        le=1
-    )
+    source_title: str
+    url: HttpUrl
+    excerpt: str
+    evidence_type: str
+    relevance: str
 
-class ClaimParseResult(BaseModel):
-    elements: list[ClaimElement]
 
 class TechnologyProfile(BaseModel):
     claim_element_id: str
@@ -66,8 +51,18 @@ class TechnologyProfile(BaseModel):
     likely_components: list[str]
     implementation_hypotheses: list[str]
 
+
 class SearchPlan(BaseModel):
     claim_element_id: str
     queries: list[SearchQuery]
     preferred_sources: list[str]
     search_strategy: str
+
+
+class EvidenceFinding(BaseModel):
+    claim_element_id: str
+    source_title: str
+    url: HttpUrl
+    excerpt: str
+    evidence_type: str
+    relevance: str
