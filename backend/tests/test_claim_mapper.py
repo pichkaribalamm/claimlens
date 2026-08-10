@@ -94,3 +94,33 @@ def test_claim_mapper():
     )
 
     mock_gemini.return_value.generate.assert_called_once()
+
+
+def test_claim_mapper_without_verified_evidence():
+
+    element = ClaimElement(
+        id="1.3",
+        claim_number="1",
+        text="a memory controller configured to store processed image data"
+    )
+
+    with patch(
+        "app.agents.claim_mapper.GeminiService"
+    ) as mock_gemini:
+
+        mapper = ClaimMapper()
+
+        result = mapper.map(
+            element,
+            []
+        )
+
+    assert result.claim_element_id == "1.3"
+    assert result.supported is False
+    assert result.confidence == 0.0
+    assert result.evidence == []
+    assert result.reasoning == (
+        "No verified evidence supports this claim element."
+    )
+
+    mock_gemini.return_value.generate.assert_not_called()
