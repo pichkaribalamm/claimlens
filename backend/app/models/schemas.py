@@ -1,4 +1,5 @@
 from typing import Optional
+
 from pydantic import BaseModel, Field, HttpUrl
 
 
@@ -57,12 +58,3 @@ class SearchPlan(BaseModel):
     queries: list[SearchQuery]
     preferred_sources: list[str]
     search_strategy: str
-
-
-class EvidenceFinding(BaseModel):
-    claim_element_id: str
-    source_title: str
-    url: HttpUrl
-    excerpt: str
-    evidence_type: str
-    relevance: str
