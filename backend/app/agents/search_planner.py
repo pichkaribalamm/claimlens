@@ -51,11 +51,19 @@ IMPORTANT RULES:
    - reputable technical publications
 9. Use site-restricted queries when a particular authoritative
    source is especially relevant.
-10. Avoid overly broad queries that are likely to produce
+10. Do not assume or assert target-specific facts that are not
+    explicitly provided in the input.
+11. Treat items from the technology profile such as likely
+    components or implementation approaches as hypotheses for
+    search generation, not as established facts about the target.
+12. If a possible target architecture, chipset, component,
+    or implementation is not established by the input, do not
+    present it as confirmed in the search strategy.
+13. Avoid overly broad queries that are likely to produce
     large numbers of irrelevant results.
-11. Each query must have a clear rationale.
-12. Assign priority from 1 to 5, where 1 is highest priority.
-13. Return only the requested structured output.
+14. Each query must have a clear rationale.
+15. Assign priority from 1 to 5, where 1 is highest priority.
+16. Return only the requested structured output.
 
 CLAIM ELEMENT
 
