@@ -21,7 +21,8 @@ def test_evidence_extractor():
 
     result = extractor.extract(
         element,
-        search_result
+        search_result,
+        "The device uses a processor configured to receive image data."
     )
 
     assert result == []
