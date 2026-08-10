@@ -72,3 +72,6 @@ class SearchPlan(BaseModel):
     queries: list[SearchQuery]
     preferred_sources: list[str]
     search_strategy: str
+
+class EvidenceExtractionResult(BaseModel):
+    evidence: list[Evidence]
