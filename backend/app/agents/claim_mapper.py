@@ -1,6 +1,6 @@
 from app.models.schemas import (
     ClaimElement,
-    Evidence,
+    VerifiedEvidence,
     ClaimElementMapping,
 )
 
@@ -10,7 +10,7 @@ class ClaimMapper:
     def map(
         self,
         claim_element: ClaimElement,
-        evidence: list[Evidence],
+        verified_evidence: list[VerifiedEvidence],
     ) -> ClaimElementMapping:
         """
         Map verified evidence to a claim element.
