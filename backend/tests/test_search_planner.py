@@ -34,7 +34,12 @@ def test_search_planner():
         likely_components=[
             "Image Signal Processor",
             "Camera Interface"
-        ]
+        ],
+
+            implementation_hypotheses=[
+        "The target may use a dedicated ISP",
+        "The target may receive camera data through MIPI CSI"
+    ]
     )
 
     planner = SearchPlanner()
