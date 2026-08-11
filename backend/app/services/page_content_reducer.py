@@ -10,9 +10,9 @@ class PageContentReducer:
 
     def __init__(
         self,
-        max_chars: int = 4500,
-        max_passages: int = 8,
-        max_passage_chars: int = 650,
+        max_chars: int = 5000,
+        max_passages: int = 10,
+        max_passage_chars: int = 500,
     ):
         self.max_chars = max_chars
         self.max_passages = max_passages
@@ -122,11 +122,11 @@ class PageContentReducer:
                 continue
 
             if len(passage) > self.max_passage_chars:
-
                 passage = self._trim_passage(
-                    passage,
-                    phrases,
-                    terms,
+                    passage=passage,
+                    phrases=phrases,
+                    terms=terms,
+                    max_chars=self.max_passage_chars,
                 )
 
             passage = passage.strip()
@@ -134,12 +134,10 @@ class PageContentReducer:
             if not passage:
                 continue
 
-            passage_score = (
-                self._score_passage(
-                    passage=passage,
-                    phrases=phrases,
-                    terms=terms,
-                )
+            passage_score = self._score_passage(
+                passage=passage,
+                phrases=phrases,
+                terms=terms,
             )
 
             candidate_passages.append(
@@ -163,7 +161,6 @@ class PageContentReducer:
         )
 
         selected_passages = []
-
         selected_ranges = []
 
         total_chars = 0
@@ -205,9 +202,9 @@ class PageContentReducer:
             if len(passage) > remaining_chars:
 
                 passage = self._trim_passage(
-                    passage,
-                    phrases,
-                    terms,
+                    passage=passage,
+                    phrases=phrases,
+                    terms=terms,
                     max_chars=remaining_chars,
                 )
 
@@ -274,9 +271,10 @@ class PageContentReducer:
 
         # Preserve wording while removing excessive whitespace.
         #
-        # We intentionally do NOT aggressively rewrite punctuation
-        # or sentence structure because downstream evidence
-        # extraction should retain source wording.
+        # Do not rewrite punctuation or wording because the
+        # evidence extractor must later be able to copy exact
+        # source wording.
+
         content = content.replace(
             "\r\n",
             "\n",
@@ -308,7 +306,6 @@ class PageContentReducer:
         if not content:
             return []
 
-        # First split obvious paragraph/newline boundaries.
         blocks = re.split(
             r"\n+",
             content,
@@ -325,8 +322,8 @@ class PageContentReducer:
 
             # Split ordinary sentence boundaries.
             #
-            # This deliberately remains simple and deterministic.
-            # We do not use an LLM or external NLP dependency.
+            # This remains deterministic and dependency-free.
+
             parts = re.split(
                 r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])",
                 block,
@@ -395,10 +392,6 @@ class PageContentReducer:
 
             words = normalized.split()
 
-            # Generate phrases of 2-6 words.
-            #
-            # We intentionally avoid one-word phrases here.
-            # Individual terms are handled separately.
             max_phrase_size = min(
                 6,
                 len(words),
@@ -529,8 +522,6 @@ class PageContentReducer:
 
         score = 0
 
-        matched_phrases = set()
-
         # --------------------------------------------------------
         # Exact multi-word technical phrases.
         # --------------------------------------------------------
@@ -539,10 +530,6 @@ class PageContentReducer:
 
             if phrase not in lower_sentence:
                 continue
-
-            matched_phrases.add(
-                phrase
-            )
 
             word_count = len(
                 phrase.split()
@@ -577,8 +564,6 @@ class PageContentReducer:
                     term
                 )
 
-        # Individual terms matter, but substantially less than
-        # coherent phrases.
         score += min(
             len(matched_terms) * 2,
             14,
@@ -597,9 +582,9 @@ class PageContentReducer:
         # --------------------------------------------------------
         # Technical relationship language.
         #
-        # These terms are especially valuable for EoU because
-        # they often indicate that the sentence describes an
-        # actual technical behavior rather than background.
+        # These are deliberately weighted because a sentence
+        # describing an actual operation or relationship is more
+        # useful than one merely mentioning a component.
         # --------------------------------------------------------
 
         relationship_terms = {
@@ -630,10 +615,22 @@ class PageContentReducer:
             "communication",
             "determines",
             "determine",
+            "identifies",
+            "identify",
+            "selects",
+            "select",
             "generates",
             "generate",
             "processes",
             "process",
+            "classifies",
+            "classify",
+            "redirects",
+            "redirect",
+            "forwards",
+            "forward",
+            "steers",
+            "steer",
         }
 
         relationship_matches = sum(
@@ -643,8 +640,37 @@ class PageContentReducer:
         )
 
         score += min(
-            relationship_matches * 3,
-            9,
+            relationship_matches * 4,
+            12,
+        )
+
+        # --------------------------------------------------------
+        # Conditional / causal language.
+        #
+        # Especially valuable for claims containing relationships
+        # such as "in response to", "based on", "when", etc.
+        # --------------------------------------------------------
+
+        conditional_terms = {
+            "if",
+            "when",
+            "in response",
+            "based on",
+            "according to",
+            "depending on",
+            "upon determining",
+            "after determining",
+        }
+
+        conditional_matches = sum(
+            1
+            for term in conditional_terms
+            if term in lower_sentence
+        )
+
+        score += min(
+            conditional_matches * 4,
+            8,
         )
 
         # --------------------------------------------------------
@@ -690,8 +716,6 @@ class PageContentReducer:
             terms,
         )
 
-        # Reward passages that contain multiple distinct
-        # technical terms.
         lower_passage = (
             passage.lower()
         )
@@ -739,12 +763,8 @@ class PageContentReducer:
         )
 
         # --------------------------------------------------------
-        # Add one neighboring sentence when it provides technical
-        # context or a relationship.
-        #
-        # We prefer the following sentence because many technical
-        # pages introduce a component and then describe its
-        # operation in the next sentence.
+        # Add ONE neighboring sentence when it provides meaningful
+        # technical context or completes a relationship.
         # --------------------------------------------------------
 
         neighbors = []
@@ -774,11 +794,11 @@ class PageContentReducer:
                 terms=terms,
             )
 
-            # Also reward explicit relational language.
             lower_neighbor = (
                 neighbor.lower()
             )
 
+            # Strongly prefer explicit technical relationships.
             if any(
                 relationship in lower_neighbor
                 for relationship in (
@@ -786,13 +806,17 @@ class PageContentReducer:
                     "in response to",
                     "configured to",
                     "responsive to",
-                    "from",
-                    "to",
-                    "through",
+                    "determines",
+                    "identifies",
+                    "selects",
+                    "routes",
+                    "forwards",
+                    "redirects",
+                    "steers",
                     "using",
                 )
             ):
-                neighbor_score += 3
+                neighbor_score += 5
 
             if (
                 neighbor_score
@@ -805,10 +829,11 @@ class PageContentReducer:
                     neighbor_index
                 )
 
-        # Add neighboring sentence only when it actually helps.
+        # Only add a neighbor when it provides meaningful
+        # technical value.
         if (
             best_neighbor is not None
-            and best_neighbor_score >= 4
+            and best_neighbor_score >= 7
         ):
 
             proposed_length = (
@@ -825,85 +850,24 @@ class PageContentReducer:
                 proposed_length
                 <= self.max_passage_chars
             ):
+
                 indexes.append(
                     best_neighbor
                 )
 
         # --------------------------------------------------------
-        # Occasionally a third sentence is needed to preserve a
-        # technical relationship.
+        # IMPORTANT:
+        #
+        # Do NOT automatically add a third sentence.
+        #
+        # The previous reducer occasionally expanded passages to
+        # three sentences based on surrounding scores. That can
+        # turn a useful evidence-bearing sentence into a large
+        # paragraph.
+        #
+        # We still allow 2-sentence passages when context genuinely
+        # helps, while keeping the normal evidence unit compact.
         # --------------------------------------------------------
-
-        if len(indexes) == 2:
-
-            surrounding = []
-
-            for candidate in (
-                index - 1,
-                index + 1,
-                index - 2,
-                index + 2,
-            ):
-
-                if (
-                    candidate < 0
-                    or candidate >= len(sentences)
-                    or candidate in indexes
-                ):
-                    continue
-
-                candidate_score = (
-                    self._score_sentence(
-                        sentences[candidate],
-                        phrases,
-                        terms,
-                    )
-                )
-
-                if candidate_score >= 6:
-                    surrounding.append(
-                        (
-                            candidate_score,
-                            candidate,
-                        )
-                    )
-
-            if surrounding:
-
-                surrounding.sort(
-                    reverse=True
-                )
-
-                candidate = (
-                    surrounding[0][1]
-                )
-
-                proposed_indexes = (
-                    indexes + [candidate]
-                )
-
-                proposed_indexes.sort()
-
-                proposed_length = sum(
-                    len(
-                        sentences[
-                            position
-                        ]
-                    )
-                    for position
-                    in proposed_indexes
-                ) + (
-                    len(proposed_indexes)
-                    - 1
-                )
-
-                if (
-                    proposed_length
-                    <= self.max_passage_chars
-                ):
-                    indexes = (
-                        proposed_indexes
-                    )
 
         indexes.sort()
 
@@ -935,10 +899,17 @@ class PageContentReducer:
         )
 
         if not sentences:
-            return passage[:limit].rstrip()
+            return passage[
+                :limit
+            ].rstrip()
+
+        # Prefer complete sentences.
+        #
+        # Never intentionally cut an evidence-bearing sentence
+        # in the middle when a shorter complete sentence is
+        # available.
 
         selected = []
-
         total = 0
 
         for sentence in sentences:
@@ -972,10 +943,7 @@ class PageContentReducer:
                 selected
             ).strip()
 
-        # Last-resort truncation.
-        #
-        # This should be rare because passages are constructed
-        # from sentence boundaries.
+        # Last resort for a single extremely long sentence.
         return passage[
             :limit
         ].rstrip()
