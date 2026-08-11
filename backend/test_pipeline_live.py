@@ -18,15 +18,28 @@ from app.services.page_content_reducer import PageContentReducer
 claim = Claim(
     claim_number="1",
     text=(
-        "A device comprising a processor configured to receive "
-        "image data."
+        "A method of routing network traffic through a specialized "
+        "network edge system for a communication network, the method "
+        "comprising: in an edge system controller within the "
+        "communication network: identifying criteria indicating "
+        "whether certain network traffic should be handled by the "
+        "specialized network edge system; receiving, from a first "
+        "network edge system for the communication network, first "
+        "information about first network traffic entering the "
+        "communication network through the first network edge "
+        "system from outside the communication network; and in "
+        "response to determining, based on the first information, "
+        "that the first network traffic satisfies the criteria, "
+        "routing the first network traffic through the specialized "
+        "network edge system."
     ),
 )
 
 
 target = TargetScope(
-    company="Samsung",
-    product="Galaxy S26 Ultra",
+    company="Nokia",
+    product="Cloud",
+    technology="security, communication",
 )
 
 
@@ -133,10 +146,12 @@ print("\n=== SEARCH SERVICE ===")
 search_service = SearchService()
 
 
-all_search_results = []
+search_results_by_element = {}
 
 
 for search_plan in search_plans:
+
+    element_results = []
 
     for query in search_plan.queries[:2]:
 
@@ -147,12 +162,22 @@ for search_plan in search_plans:
             f"\nResults: {len(results)}"
         )
 
-        all_search_results.extend(results)
+        element_results.extend(results)
+
+    search_results_by_element[
+        search_plan.claim_element_id
+    ] = element_results
+
+
+total_search_results = sum(
+    len(results)
+    for results in search_results_by_element.values()
+)
 
 
 print(
     f"\nTotal search results collected: "
-    f"{len(all_search_results)}"
+    f"{total_search_results}"
 )
 
 
@@ -163,35 +188,59 @@ print(
 
 fetcher = PageFetcher()
 reducer = PageContentReducer()
-extractor = EvidenceExtractor()
 
 
-element = claim_elements[0]
+sources_by_element = {}
 
 
-technology_profile = profiles_by_id[
-    element.id
-]
+for element in claim_elements:
 
+    technology_profile = profiles_by_id[
+        element.id
+    ]
 
-sources_for_extraction = []
+    search_results = search_results_by_element.get(
+        element.id,
+        [],
+    )
 
+    sources_for_extraction = []
 
-for search_result in all_search_results[:5]:
+    for search_result in search_results[:5]:
 
-    try:
+        try:
 
-        page_content = fetcher.fetch(
-            search_result
-        )
+            page_content = fetcher.fetch(
+                search_result
+            )
 
-        reduced_content = reducer.reduce(
-            element,
-            page_content,
-            technology_profile,
-        )
+            reduced_content = reducer.reduce(
+                element,
+                page_content,
+                technology_profile,
+            )
 
-        if not reduced_content:
+            if not reduced_content:
+
+                print(
+                    f"\nSkipping source: "
+                    f"{search_result.url}"
+                )
+
+                print(
+                    "Reason: No relevant page content found."
+                )
+
+                continue
+
+            sources_for_extraction.append(
+                (
+                    search_result,
+                    reduced_content,
+                )
+            )
+
+        except Exception as exc:
 
             print(
                 f"\nSkipping source: "
@@ -199,82 +248,105 @@ for search_result in all_search_results[:5]:
             )
 
             print(
-                "Reason: No relevant page content found."
+                f"Reason: {exc}"
             )
 
-            continue
+    sources_by_element[element.id] = (
+        sources_for_extraction
+    )
+
+    print(
+        f"\nClaim element {element.id}: "
+        f"{len(sources_for_extraction)} "
+        f"sources prepared for extraction"
+    )
 
 
-        sources_for_extraction.append(
-            (
-                search_result,
-                reduced_content,
+print("\n=== BATCH EVIDENCE EXTRACTION ===")
+
+
+extractor = EvidenceExtractor()
+
+
+potential_evidence_by_element = {}
+
+
+for element in claim_elements:
+
+    sources_for_extraction = sources_by_element.get(
+        element.id,
+        [],
+    )
+
+    if not sources_for_extraction:
+
+        potential_evidence_by_element[
+            element.id
+        ] = []
+
+        print(
+            f"\nClaim element {element.id}: "
+            f"No sources prepared for extraction"
+        )
+
+        continue
+
+    extraction_results = extractor.extract_batch(
+        element,
+        sources_for_extraction,
+    )
+
+    potential_evidence = []
+
+
+    for search_result, evidence_list in zip(
+        (
+            source
+            for source, _ in sources_for_extraction
+        ),
+        extraction_results,
+    ):
+
+        if evidence_list:
+
+            potential_evidence.extend(
+                evidence_list
             )
-        )
+
+            print(
+                f"\nEvidence found: "
+                f"{search_result.title}"
+            )
+
+        else:
+
+            print(
+                f"\nNo evidence found: "
+                f"{search_result.title}"
+            )
 
 
-    except Exception as exc:
-
-        print(
-            f"\nSkipping source: "
-            f"{search_result.url}"
-        )
-
-        print(
-            f"Reason: {exc}"
-        )
+    potential_evidence_by_element[
+        element.id
+    ] = potential_evidence
 
 
-print(
-    f"\nSources prepared for extraction: "
-    f"{len(sources_for_extraction)}"
+    print(
+        f"\nClaim element {element.id} "
+        f"potential evidence findings: "
+        f"{len(potential_evidence)}"
+    )
+
+
+total_potential_evidence = sum(
+    len(evidence)
+    for evidence in potential_evidence_by_element.values()
 )
 
 
 print(
-    "\n=== BATCH EVIDENCE EXTRACTION ==="
-)
-
-
-extraction_results = extractor.extract_batch(
-    element,
-    sources_for_extraction,
-)
-
-
-potential_evidence = []
-
-
-for search_result, evidence_list in zip(
-    (
-        source
-        for source, _ in sources_for_extraction
-    ),
-    extraction_results,
-):
-
-    if evidence_list:
-
-        potential_evidence.extend(
-            evidence_list
-        )
-
-        print(
-            f"\nEvidence found: "
-            f"{search_result.title}"
-        )
-
-    else:
-
-        print(
-            f"\nNo evidence found: "
-            f"{search_result.title}"
-        )
-
-
-print(
-    f"\nPotential evidence findings: "
-    f"{len(potential_evidence)}"
+    f"\nTotal potential evidence findings: "
+    f"{total_potential_evidence}"
 )
 
 
@@ -284,48 +356,93 @@ print("\n=== BATCH EVIDENCE VERIFICATION ===")
 verifier = EvidenceVerifier()
 
 
-verified_evidence = []
+verified_evidence_by_element = {}
 
 
-verification_results = verifier.verify_batch(
-    element,
-    potential_evidence,
-)
+for element in claim_elements:
 
-
-for evidence, verification in zip(
-    potential_evidence,
-    verification_results,
-):
-
-    print(
-        f"\nSource: "
-        f"{evidence.source_title}"
+    potential_evidence = (
+        potential_evidence_by_element.get(
+            element.id,
+            [],
+        )
     )
 
-    print(
-        f"Supported: "
-        f"{verification.evidence_supported}"
+    if not potential_evidence:
+
+        verified_evidence_by_element[
+            element.id
+        ] = []
+
+        print(
+            f"\nClaim element {element.id}: "
+            f"No evidence to verify"
+        )
+
+        continue
+
+
+    verification_results = verifier.verify_batch(
+        element,
+        potential_evidence,
     )
 
-    print(
-        f"Confidence: "
-        f"{verification.confidence}"
-    )
 
-    if verification.evidence_supported:
+    verified_evidence = []
 
-        verified_evidence.append(
-            VerifiedEvidence(
-                evidence=evidence,
-                verification=verification,
-            )
+
+    for evidence, verification in zip(
+        potential_evidence,
+        verification_results,
+    ):
+
+        print(
+            f"\nSource: "
+            f"{evidence.source_title}"
+        )
+
+        print(
+            f"Supported: "
+            f"{verification.evidence_supported}"
+        )
+
+        print(
+            f"Confidence: "
+            f"{verification.confidence}"
         )
 
 
+        if verification.evidence_supported:
+
+            verified_evidence.append(
+                VerifiedEvidence(
+                    evidence=evidence,
+                    verification=verification,
+                )
+            )
+
+
+    verified_evidence_by_element[
+        element.id
+    ] = verified_evidence
+
+
+    print(
+        f"\nClaim element {element.id} "
+        f"verified evidence: "
+        f"{len(verified_evidence)}"
+    )
+
+
+total_verified_evidence = sum(
+    len(evidence)
+    for evidence in verified_evidence_by_element.values()
+)
+
+
 print(
-    f"\nVerified evidence: "
-    f"{len(verified_evidence)}"
+    f"\nTotal verified evidence: "
+    f"{total_verified_evidence}"
 )
 
 
@@ -335,34 +452,54 @@ print("\n=== CLAIM MAPPING ===")
 mapper = ClaimMapper()
 
 
-mapping = mapper.map(
-    element,
-    verified_evidence,
-)
+element_mappings = []
 
 
-print(
-    f"Supported: "
-    f"{mapping.supported}"
-)
+for element in claim_elements:
+
+    verified_evidence = (
+        verified_evidence_by_element.get(
+            element.id,
+            [],
+        )
+    )
 
 
-print(
-    f"Confidence: "
-    f"{mapping.confidence}"
-)
+    mapping = mapper.map(
+        element,
+        verified_evidence,
+    )
 
 
-print(
-    f"Evidence count: "
-    f"{len(mapping.evidence)}"
-)
+    element_mappings.append(
+        mapping
+    )
 
 
-print(
-    f"Reasoning: "
-    f"{mapping.reasoning}"
-)
+    print(
+        f"\nClaim element: "
+        f"{mapping.claim_element_id}"
+    )
+
+    print(
+        f"Supported: "
+        f"{mapping.supported}"
+    )
+
+    print(
+        f"Confidence: "
+        f"{mapping.confidence}"
+    )
+
+    print(
+        f"Evidence count: "
+        f"{len(mapping.evidence)}"
+    )
+
+    print(
+        f"Reasoning: "
+        f"{mapping.reasoning}"
+    )
 
 
 print("\n=== CLAIM ANALYSIS ===")
@@ -373,7 +510,7 @@ analyzer = ClaimAnalyzer()
 
 analysis = analyzer.analyze(
     claim,
-    [mapping],
+    element_mappings,
 )
 
 
