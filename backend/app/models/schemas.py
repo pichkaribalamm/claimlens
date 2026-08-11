@@ -82,6 +82,20 @@ class EvidenceVerificationResult(BaseModel):
     reasoning: str
 
 
+class EvidenceVerificationItem(BaseModel):
+    evidence_index: int
+    evidence_supported: bool
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+    reasoning: str
+
+
+class EvidenceVerificationBatchResult(BaseModel):
+    results: list[EvidenceVerificationItem]
+
+
 class VerifiedEvidence(BaseModel):
     evidence: Evidence
     verification: EvidenceVerificationResult
