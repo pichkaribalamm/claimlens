@@ -4,11 +4,13 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 class Claim(BaseModel):
+
     claim_number: str
     text: str
 
 
 class ClaimElement(BaseModel):
+
     id: str
     claim_number: str
     text: str
@@ -16,12 +18,14 @@ class ClaimElement(BaseModel):
 
 
 class TargetScope(BaseModel):
+
     company: Optional[str] = None
     product: Optional[str] = None
     technology: Optional[str] = None
 
 
 class SearchQuery(BaseModel):
+
     query: str
     rationale: str
     priority: int = Field(
@@ -32,13 +36,17 @@ class SearchQuery(BaseModel):
 
 
 class SearchResult(BaseModel):
+
     title: str
     url: HttpUrl
     snippet: Optional[str] = None
     source: Optional[str] = None
+    source_type: Optional[str] = None
+    source_quality: Optional[str] = None
 
 
 class Evidence(BaseModel):
+
     claim_element_id: str
     source_title: str
     url: HttpUrl
@@ -48,10 +56,12 @@ class Evidence(BaseModel):
 
 
 class ClaimParseResult(BaseModel):
+
     elements: list[ClaimElement]
 
 
 class TechnologyProfile(BaseModel):
+
     claim_element_id: str
     target: TargetScope
     core_concept: str
@@ -62,33 +72,41 @@ class TechnologyProfile(BaseModel):
 
 
 class TechnologyProfileBatchResult(BaseModel):
+
     results: list[TechnologyProfile]
 
 
 class SearchPlan(BaseModel):
+
     claim_element_id: str
     queries: list[SearchQuery]
     preferred_sources: list[str]
     search_strategy: str
 
+
 class SearchPlanBatchResult(BaseModel):
+
     results: list[SearchPlan]
 
 
 class EvidenceExtractionResult(BaseModel):
+
     evidence: list[Evidence]
 
 
 class EvidenceExtractionItem(BaseModel):
+
     source_index: int
     evidence: list[Evidence]
 
 
 class EvidenceExtractionBatchResult(BaseModel):
+
     results: list[EvidenceExtractionItem]
 
 
 class EvidenceVerificationResult(BaseModel):
+
     claim_element_id: str
     evidence_supported: bool
     confidence: float = Field(
@@ -99,6 +117,7 @@ class EvidenceVerificationResult(BaseModel):
 
 
 class EvidenceVerificationItem(BaseModel):
+
     evidence_index: int
     evidence_supported: bool
     confidence: float = Field(
@@ -109,15 +128,18 @@ class EvidenceVerificationItem(BaseModel):
 
 
 class EvidenceVerificationBatchResult(BaseModel):
+
     results: list[EvidenceVerificationItem]
 
 
 class VerifiedEvidence(BaseModel):
+
     evidence: Evidence
     verification: EvidenceVerificationResult
 
 
 class ClaimElementMapping(BaseModel):
+
     claim_element_id: str
     supported: bool
     confidence: float = Field(
@@ -129,6 +151,7 @@ class ClaimElementMapping(BaseModel):
 
 
 class ClaimAnalysisResult(BaseModel):
+
     claim_number: str
     coverage_status: str
     confidence: float = Field(
