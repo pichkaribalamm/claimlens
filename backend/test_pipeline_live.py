@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from unittest.mock import patch
 
 os.environ["CLAIMLENS_USE_MOCK_GEMINI"] = "true"
@@ -109,18 +111,38 @@ def mock_gemini_generate(prompt, response_schema):
         """
 
     if schema_name == "EvidenceVerificationBatchResult":
-        return """
-        {
-            "results": [
+
+        evidence_indexes = [
+            int(index)
+            for index in re.findall(
+                r"EVIDENCE INDEX:\s*(\d+)",
+                prompt,
+            )
+        ]
+
+        results = []
+
+        for index in evidence_indexes:
+
+            results.append(
                 {
-                    "evidence_index": 0,
-                    "evidence_supported": false,
+                    "evidence_index": index,
+                    "evidence_supported": False,
                     "confidence": 0.90,
-                    "reasoning": "The available excerpt identifies an image signal processor associated with the camera, but it does not explicitly establish that the processor is configured to receive image data."
+                    "reasoning": (
+                        "The available excerpt identifies an image "
+                        "signal processor associated with the camera, "
+                        "but it does not explicitly establish that "
+                        "the processor is configured to receive image data."
+                    ),
                 }
-            ]
-        }
-        """
+            )
+
+        return json.dumps(
+            {
+                "results": results,
+            }
+        )
 
     if schema_name == "ClaimElementMapping":
         return """
