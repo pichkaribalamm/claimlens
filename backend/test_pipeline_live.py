@@ -3,7 +3,9 @@ import os
 import re
 from unittest.mock import patch
 
+
 os.environ["CLAIMLENS_USE_MOCK_GEMINI"] = "true"
+
 
 from app.agents.claim_analyzer import ClaimAnalyzer
 from app.agents.claim_mapper import ClaimMapper
@@ -168,13 +170,13 @@ def mock_gemini_generate(prompt, response_schema):
             results.append(
                 {
                     "evidence_index": index,
-                    "evidence_supported": False,
-                    "confidence": 0.90,
+                    "evidence_supported": True,
+                    "confidence": 0.95,
                     "reasoning": (
-                        "The available excerpt identifies a processor "
-                        "receiving image data, but the excerpt does "
-                        "not establish all limitations necessary to "
-                        "support the complete claim element."
+                        "The excerpt explicitly states that the "
+                        "processor receives image data from the "
+                        "camera system, directly supporting the "
+                        "claim element."
                     ),
                 }
             )
@@ -189,10 +191,19 @@ def mock_gemini_generate(prompt, response_schema):
         return """
         {
             "claim_element_id": "1.1",
-            "supported": false,
-            "confidence": 0.0,
-            "evidence": [],
-            "reasoning": "No verified evidence supports this claim element."
+            "supported": true,
+            "confidence": 0.95,
+            "evidence": [
+                {
+                    "claim_element_id": "1.1",
+                    "source_title": "Samsung Galaxy S26 Ultra | Galaxy AI | Samsung India",
+                    "url": "https://www.samsung.com/in/smartphones/galaxy-s26-ultra/",
+                    "excerpt": "The processor receives image data from the camera system.",
+                    "evidence_type": "direct",
+                    "relevance": "The source explicitly describes a processor receiving image data from the camera system."
+                }
+            ],
+            "reasoning": "The verified evidence directly supports the technical substance of the claim element."
         }
         """
 
@@ -231,6 +242,7 @@ with patch(
     )
 
     for element in parsed_claim.elements:
+
         print(
             f"- {element.id}: "
             f"{element.text}"
@@ -253,6 +265,7 @@ with patch(
     )
 
     for profile in technology_profiles:
+
         print(
             f"- {profile.claim_element_id}: "
             f"{profile.core_concept}"
@@ -291,6 +304,7 @@ with patch(
         )
 
         for query in search_plan.queries:
+
             print(
                 f"- [{query.priority}] "
                 f"{query.query}"
@@ -329,6 +343,7 @@ with patch(
     extractor = EvidenceExtractor()
 
     element = claim_elements[0]
+
     technology_profile = profiles_by_id[element.id]
 
     sources_for_extraction = []
