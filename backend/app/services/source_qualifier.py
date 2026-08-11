@@ -7,7 +7,8 @@ class SourceQualifier:
 
     # ============================================================
     # TIER 1
-    # Primary / official technical sources
+    #
+    # Primary / official technical sources.
     # ============================================================
 
     TIER_1_DOMAINS = {
@@ -70,6 +71,7 @@ class SourceQualifier:
 
     # ============================================================
     # TIER 2
+    #
     # Established technical resources.
     # ============================================================
 
@@ -82,9 +84,8 @@ class SourceQualifier:
 
     # ============================================================
     # TIER 3
-    # Generic technical blogs / secondary sources.
     #
-    # These are deliberately excluded when minimum_tier=2.
+    # Generic technical blogs / secondary sources.
     # ============================================================
 
     TIER_3_DOMAINS = {
@@ -134,18 +135,56 @@ class SourceQualifier:
         "google.com",
         "bing.com",
         "duckduckgo.com",
+        "search.yahoo.com",
     }
+
+    # ============================================================
+    # EXCLUDED URL / PATH MARKERS
+    #
+    # These provide a second layer of patent filtering.
+    #
+    # A patent page can appear on a non-obvious domain, so we
+    # should not rely only on the hostname.
+    # ============================================================
+
+    EXCLUDED_PATH_MARKERS = {
+        "/patent/",
+        "/patents/",
+        "/patent-search/",
+        "/patentnumber/",
+        "/patent-number/",
+        "/patentscope/",
+        "/publication/",
+        "/publications/",
+    }
+
+    # ============================================================
+    # SOURCE TYPE LABELS
+    # ============================================================
+
+    SOURCE_TYPE_OFFICIAL = "official"
+    SOURCE_TYPE_TECHNICAL = "technical"
+    SOURCE_TYPE_SECONDARY = "secondary"
+    SOURCE_TYPE_UNKNOWN = "unknown"
+    SOURCE_TYPE_EXCLUDED = "excluded"
 
     def __init__(
         self,
         minimum_tier: int = 2,
+        allow_unknown: bool = False,
     ):
         """
-        minimum_tier controls which source tiers are accepted.
+        minimum_tier controls which known source tiers qualify.
 
         1 -> Tier 1 only
         2 -> Tier 1 + Tier 2
         3 -> Tier 1 + Tier 2 + Tier 3
+
+        allow_unknown controls whether domains that are not
+        explicitly classified may pass qualification.
+
+        Default is False because source quality should remain
+        deterministic unless explicitly configured otherwise.
         """
 
         if minimum_tier not in {
@@ -158,25 +197,62 @@ class SourceQualifier:
             )
 
         self.minimum_tier = minimum_tier
+        self.allow_unknown = allow_unknown
+
+    # ============================================================
+    # QUALIFICATION
+    # ============================================================
 
     def qualify(
         self,
         search_result: SearchResult,
     ) -> bool:
+        """
+        Determine whether a source may proceed to evidence
+        extraction.
+
+        Patent and explicitly excluded sources are always rejected.
+
+        Known sources are accepted according to minimum_tier.
+
+        Unknown sources are rejected by default unless
+        allow_unknown=True.
+        """
+
+        source_type = self.source_type(
+            search_result
+        )
+
+        # --------------------------------------------------------
+        # Hard exclusions always win.
+        # --------------------------------------------------------
+
+        if source_type == self.SOURCE_TYPE_EXCLUDED:
+            return False
 
         tier = self.quality_tier(
             search_result
         )
 
-        # None means:
-        # - explicitly excluded, OR
-        # - unknown domain
-        #
-        # Either way, do not qualify it.
-        if tier is None:
-            return False
+        # --------------------------------------------------------
+        # Known source.
+        # --------------------------------------------------------
 
-        return tier <= self.minimum_tier
+        if tier is not None:
+
+            return (
+                tier <= self.minimum_tier
+            )
+
+        # --------------------------------------------------------
+        # Unknown source.
+        # --------------------------------------------------------
+
+        return self.allow_unknown
+
+    # ============================================================
+    # QUALITY TIER
+    # ============================================================
 
     def quality_tier(
         self,
@@ -190,12 +266,18 @@ class SourceQualifier:
         if not domain:
             return None
 
+        # --------------------------------------------------------
         # Explicit exclusions always win.
-        if self._matches_domain(
-            domain,
-            self.EXCLUDED_DOMAINS,
+        # --------------------------------------------------------
+
+        if self._is_excluded(
+            search_result
         ):
             return None
+
+        # --------------------------------------------------------
+        # Known tiers.
+        # --------------------------------------------------------
 
         if self._matches_domain(
             domain,
@@ -215,8 +297,12 @@ class SourceQualifier:
         ):
             return 3
 
-        # Unknown domains are deliberately rejected.
+        # Unknown domain.
         return None
+
+    # ============================================================
+    # QUALITY LABEL
+    # ============================================================
 
     def quality_label(
         self,
@@ -236,7 +322,164 @@ class SourceQualifier:
         if tier == 3:
             return "TIER_3"
 
-        return "UNQUALIFIED"
+        if self.source_type(
+            search_result
+        ) == self.SOURCE_TYPE_EXCLUDED:
+
+            return "EXCLUDED"
+
+        return "UNKNOWN"
+
+    # ============================================================
+    # SOURCE TYPE
+    # ============================================================
+
+    def source_type(
+        self,
+        search_result: SearchResult,
+    ) -> str:
+
+        domain = self._domain(
+            search_result.url
+        )
+
+        if not domain:
+            return self.SOURCE_TYPE_UNKNOWN
+
+        if self._is_excluded(
+            search_result
+        ):
+            return self.SOURCE_TYPE_EXCLUDED
+
+        if self._matches_domain(
+            domain,
+            self.TIER_1_DOMAINS,
+        ):
+            return self.SOURCE_TYPE_OFFICIAL
+
+        if self._matches_domain(
+            domain,
+            self.TIER_2_DOMAINS,
+        ):
+            return self.SOURCE_TYPE_TECHNICAL
+
+        if self._matches_domain(
+            domain,
+            self.TIER_3_DOMAINS,
+        ):
+            return self.SOURCE_TYPE_SECONDARY
+
+        return self.SOURCE_TYPE_UNKNOWN
+
+    # ============================================================
+    # APPLY METADATA
+    # ============================================================
+
+    def apply_metadata(
+        self,
+        search_result: SearchResult,
+    ) -> SearchResult:
+        """
+        Populate source qualification metadata on the existing
+        SearchResult object.
+
+        This keeps source classification explicit throughout the
+        rest of the pipeline.
+        """
+
+        search_result.source_type = (
+            self.source_type(
+                search_result
+            )
+        )
+
+        search_result.source_quality = (
+            self.quality_label(
+                search_result
+            )
+        )
+
+        return search_result
+
+    # ============================================================
+    # EXCLUSION CHECK
+    # ============================================================
+
+    def _is_excluded(
+        self,
+        search_result: SearchResult,
+    ) -> bool:
+
+        domain = self._domain(
+            search_result.url
+        )
+
+        if not domain:
+            return True
+
+        # --------------------------------------------------------
+        # Domain-level exclusion.
+        # --------------------------------------------------------
+
+        if self._matches_domain(
+            domain,
+            self.EXCLUDED_DOMAINS,
+        ):
+            return True
+
+        # --------------------------------------------------------
+        # URL path exclusion.
+        #
+        # This provides an additional patent filter.
+        # --------------------------------------------------------
+
+        try:
+            parsed = urlparse(
+                str(search_result.url)
+            )
+
+        except Exception:
+            return True
+
+        path = (
+            parsed.path or ""
+        ).lower()
+
+        for marker in self.EXCLUDED_PATH_MARKERS:
+
+            if marker in path:
+                return True
+
+        # --------------------------------------------------------
+        # Common patent URL indicators.
+        # --------------------------------------------------------
+
+        query = (
+            parsed.query or ""
+        ).lower()
+
+        combined = (
+            path + "?" + query
+        )
+
+        patent_markers = {
+            "patent",
+            "patentnumber",
+            "publicationnumber",
+            "patentid",
+            "patent_id",
+        }
+
+        for marker in patent_markers:
+
+            if marker in combined:
+                return True
+
+        return False
+
+    # ============================================================
+    # DOMAIN EXTRACTION
+    # ============================================================
 
     def _domain(
         self,
@@ -244,9 +487,11 @@ class SourceQualifier:
     ) -> str:
 
         try:
+
             parsed = urlparse(
                 str(url)
             )
+
         except Exception:
             return ""
 
@@ -257,6 +502,10 @@ class SourceQualifier:
         return hostname.removeprefix(
             "www."
         )
+
+    # ============================================================
+    # DOMAIN MATCHING
+    # ============================================================
 
     def _matches_domain(
         self,
