@@ -72,6 +72,15 @@ class EvidenceExtractionResult(BaseModel):
     evidence: list[Evidence]
 
 
+class EvidenceExtractionItem(BaseModel):
+    source_index: int
+    evidence: list[Evidence]
+
+
+class EvidenceExtractionBatchResult(BaseModel):
+    results: list[EvidenceExtractionItem]
+
+
 class EvidenceVerificationResult(BaseModel):
     claim_element_id: str
     evidence_supported: bool
