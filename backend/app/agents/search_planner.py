@@ -32,64 +32,79 @@ evidence that may later support analysis of the claim element.
 
 IMPORTANT RULES:
 
-1. Analyze the claim element itself before considering
-   implementation hypotheses.
+1. First analyze the actual technical substance and
+   limitations expressed in the claim element.
 
 2. Generate multiple complementary search queries.
 
-3. The search plan must contain THREE search layers:
+3. The search plan must use the following priority structure:
 
-   Layer 1 — Direct claim-substance searches:
-   Search the core technical relationship and limitations
-   expressed directly in the claim element.
+   PRIORITY 1 — DIRECT CLAIM-SUBSTANCE SEARCH
 
-   Layer 2 — Terminology and concept searches:
-   Search alternative terminology and closely related
-   technical concepts from the technology profile that
-   could describe the same claimed functionality.
+   At least one query MUST have priority 1.
 
-   Layer 3 — Implementation-hypothesis searches:
-   Search possible implementation approaches only as
-   secondary investigative paths.
+   A priority-1 query must search for the actual technical
+   relationship, action, structure, condition, or limitation
+   expressed in the claim element.
 
-4. Prioritize Layer 1 over Layer 2, and Layer 2 over Layer 3.
+   It should remain close to the claim's technical substance,
+   while using natural technical terminology where appropriate.
 
-5. Do not let an implementation hypothesis replace the
-   actual claim language or core technical concept.
+   Do NOT replace the claimed functionality with a presumed
+   implementation.
 
-6. At least one high-priority query should remain close to
-   the technical substance of the claim element.
+   Example:
+   If the claim describes a controller receiving information
+   about incoming network traffic, search for concepts such as
+   a controller receiving traffic information, ingress traffic
+   information, or a network edge system reporting traffic
+   information.
 
-7. Use the target company, product, and technology when
-   available.
+4. PRIORITY 2 — TERMINOLOGY / CONCEPT SEARCH
 
-8. Use technical concepts and alternative terminology from
-   the technology profile.
+   At least one query MUST have priority 2.
 
-9. Implementation hypotheses are investigative possibilities
-   only. They are not established facts about the target.
+   A priority-2 query should use alternative terminology or
+   closely related technical concepts from the technology
+   profile that could describe the SAME claimed functionality.
 
-10. Do not assume that a likely component, protocol,
-    architecture, interface, or implementation hypothesis
-    exists in the target.
+   Priority 2 may broaden terminology, but must still remain
+   technically connected to the claim element.
 
-11. Do not introduce specific technologies, protocols,
-    architectures, components, interfaces, or standards
-    that are not present in the claim element or technology
-    profile merely because they are commonly associated
-    with the technology.
+5. PRIORITY 3–5 — IMPLEMENTATION-HYPOTHESIS SEARCHES
 
-12. If an implementation hypothesis is used in a query,
-    the rationale must make clear that it is an investigative
-    hypothesis rather than a confirmed target characteristic.
+   Queries involving possible implementation approaches,
+   architectures, protocols, interfaces, components, or
+   technologies must normally have priority 3, 4, or 5.
 
-13. Do not perform the searches yourself.
+   These searches are secondary investigative paths.
 
-14. Do not determine whether the target practices the claim.
+6. NEVER assign priority 1 or priority 2 to a query whose
+   primary basis is an unconfirmed implementation hypothesis.
 
-15. Do not make unsupported claims about the target.
+7. An implementation hypothesis must never replace the actual
+   claim language or core technical relationship.
 
-16. Prefer authoritative sources such as:
+8. Do not assume that a likely component, protocol,
+   architecture, interface, standard, or implementation
+   exists in the target.
+
+9. Do not introduce specific technologies, protocols,
+   architectures, components, interfaces, or standards merely
+   because they are commonly associated with the technology.
+
+10. If an implementation hypothesis is used in a query,
+    the rationale must clearly identify it as an investigative
+    possibility rather than a confirmed characteristic of
+    the target.
+
+11. Use the target company, product, and technology when
+    available.
+
+12. Use technical concepts and alternative terminology from
+    the technology profile.
+
+13. Prefer authoritative sources such as:
     - manufacturer documentation
     - manufacturer technical pages
     - chipset/component manufacturer documentation
@@ -98,21 +113,35 @@ IMPORTANT RULES:
     - developer documentation
     - reputable technical publications
 
-17. Use site-restricted queries when a particular authoritative
+14. Use site-restricted queries when a particular authoritative
     source is especially relevant.
 
-18. Avoid overly broad queries that are likely to produce
+15. Avoid overly broad queries that are likely to produce
     large numbers of irrelevant results.
 
-19. Avoid queries that are so implementation-specific that
+16. Avoid queries that are so implementation-specific that
     they could miss evidence describing the same functionality
     using different terminology.
+
+17. Do not perform the searches yourself.
+
+18. Do not determine whether the target practices the claim.
+
+19. Do not make unsupported claims about the target.
 
 20. Each query must have a clear rationale.
 
 21. Assign priority from 1 to 5, where 1 is highest priority.
 
-22. Return only the requested structured output.
+22. The final output MUST contain:
+    - at least one priority-1 query
+    - at least one priority-2 query
+    - zero priority-1 queries based primarily on implementation
+      hypotheses
+    - zero priority-2 queries based primarily on implementation
+      hypotheses
+
+23. Return only the requested structured output.
 
 CLAIM ELEMENT
 
@@ -156,7 +185,26 @@ Implementation hypotheses:
             response_schema=SearchPlan,
         )
 
-        return SearchPlan.model_validate_json(result)
+        parsed = SearchPlan.model_validate_json(result)
+
+        priorities = [
+            query.priority
+            for query in parsed.queries
+        ]
+
+        if 1 not in priorities:
+            raise ValueError(
+                "Search plan must contain at least one "
+                "priority-1 query."
+            )
+
+        if 2 not in priorities:
+            raise ValueError(
+                "Search plan must contain at least one "
+                "priority-2 query."
+            )
+
+        return parsed
 
     def plan_batch(
         self,
@@ -246,63 +294,71 @@ IMPORTANT RULES:
 2. Preserve the exact claim element ID in its corresponding
    search plan.
 
-3. Generate multiple complementary search queries for each
-   claim element.
+3. Generate multiple complementary search queries for
+   every claim element.
 
-4. For every claim element, use THREE search layers:
+4. Every claim element MUST use the following priority
+   structure:
 
-   Layer 1 — Direct claim-substance searches:
-   Search the core technical relationship and limitations
-   expressed directly in the claim element.
+   PRIORITY 1 — DIRECT CLAIM-SUBSTANCE SEARCH
 
-   Layer 2 — Terminology and concept searches:
-   Search alternative terminology and closely related
-   technical concepts from the corresponding technology
-   profile that could describe the same claimed functionality.
+   Every claim element MUST have at least one priority-1
+   query.
 
-   Layer 3 — Implementation-hypothesis searches:
-   Search possible implementation approaches only as
-   secondary investigative paths.
+   The priority-1 query must search the actual technical
+   relationship, action, structure, condition, or limitation
+   expressed in that claim element.
 
-5. Prioritize Layer 1 over Layer 2, and Layer 2 over Layer 3.
+   Keep the query close to the claim's technical substance.
 
-6. At least one high-priority query for every claim element
-   should remain close to the technical substance of that
-   claim element.
+   Do not replace the claimed functionality with a presumed
+   implementation.
 
-7. Do not let an implementation hypothesis replace the
-   actual claim language or core technical concept.
+5. PRIORITY 2 — TERMINOLOGY / CONCEPT SEARCH
 
-8. Use the target company, product, and technology when
-   available.
+   Every claim element MUST have at least one priority-2
+   query.
 
-9. Use technical concepts and alternative terminology from
-   the corresponding technology profile.
+   The priority-2 query should use alternative terminology
+   or closely related technical concepts from the corresponding
+   technology profile that could describe the same claimed
+   functionality.
 
-10. Treat likely components and implementation hypotheses
-    as investigative possibilities only.
+6. PRIORITY 3–5 — IMPLEMENTATION-HYPOTHESIS SEARCHES
 
-11. Do not assume that a likely component, protocol,
-    architecture, interface, or implementation hypothesis
-    exists in the target.
+   Queries involving possible implementation approaches,
+   architectures, protocols, interfaces, components, or
+   technologies must normally have priority 3, 4, or 5.
 
-12. Do not introduce specific technologies, protocols,
+   These are secondary investigative paths only.
+
+7. NEVER assign priority 1 or priority 2 to a query whose
+   primary basis is an unconfirmed implementation hypothesis.
+
+8. Do not allow an implementation hypothesis to replace
+   the actual claim language or core technical relationship.
+
+9. Do not assume that a likely component, protocol,
+   architecture, interface, standard, or implementation
+   exists in the target.
+
+10. Do not introduce specific technologies, protocols,
     architectures, components, interfaces, or standards
-    that are not present in the claim element or technology
-    profile merely because they are commonly associated
-    with the technology.
+    merely because they are commonly associated with the
+    technology.
 
-13. If an implementation hypothesis is used in a query,
-    its rationale must make clear that it is an investigative
-    hypothesis rather than a confirmed target characteristic.
+11. If an implementation hypothesis is used in a query,
+    the rationale must clearly identify it as an investigative
+    possibility rather than a confirmed characteristic of
+    the target.
 
-14. Do not perform the searches yourself.
+12. Use the target company, product, and technology when
+    available.
 
-15. Do not determine whether the target practices any claim.
+13. Use technical concepts and alternative terminology from
+    the corresponding technology profile.
 
-16. Do not make unsupported claims about the target.
-
-17. Prefer authoritative sources such as:
+14. Prefer authoritative sources such as:
     - manufacturer documentation
     - manufacturer technical pages
     - chipset/component manufacturer documentation
@@ -311,28 +367,40 @@ IMPORTANT RULES:
     - developer documentation
     - reputable technical publications
 
-18. Use site-restricted queries when a particular authoritative
+15. Use site-restricted queries when a particular authoritative
     source is especially relevant.
 
-19. Avoid overly broad queries that are likely to produce
+16. Avoid overly broad queries that are likely to produce
     large numbers of irrelevant results.
 
-20. Avoid queries that are so implementation-specific that
+17. Avoid queries that are so implementation-specific that
     they could miss evidence describing the same functionality
     using different terminology.
+
+18. Do not perform the searches yourself.
+
+19. Do not determine whether the target practices any claim.
+
+20. Do not make unsupported claims about the target.
 
 21. Each query must have a clear rationale.
 
 22. Assign priority from 1 to 5, where 1 is highest priority.
 
-23. Return exactly one search plan for every claim element.
+23. For EVERY claim element, the output MUST contain:
+    - at least one priority-1 query
+    - at least one priority-2 query
+    - implementation-hypothesis queries, if any, at priority
+      3 or lower
 
 24. Do not omit any claim element.
 
-25. Do not create search plans for claim element IDs that were
-    not provided.
+25. Do not create search plans for claim element IDs that
+    were not provided.
 
-26. Return only the requested structured output.
+26. Return exactly one search plan for every claim element.
+
+27. Return only the requested structured output.
 
 TARGET
 
@@ -377,6 +445,27 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
                 "Search plan batch returned "
                 "duplicate claim element IDs."
             )
+
+        for plan in parsed.results:
+
+            priorities = [
+                query.priority
+                for query in plan.queries
+            ]
+
+            if 1 not in priorities:
+                raise ValueError(
+                    f"Search plan for claim element "
+                    f"{plan.claim_element_id} must contain "
+                    "at least one priority-1 query."
+                )
+
+            if 2 not in priorities:
+                raise ValueError(
+                    f"Search plan for claim element "
+                    f"{plan.claim_element_id} must contain "
+                    "at least one priority-2 query."
+                )
 
         plans_by_id = {
             plan.claim_element_id: plan
