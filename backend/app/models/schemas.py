@@ -62,7 +62,7 @@ class SearchResult(BaseModel):
 # ============================================================
 
 
-EvidenceType = Literal[
+SupportLevel = Literal[
     "direct",
     "supportive",
     "inferential",
@@ -81,31 +81,22 @@ class Evidence(BaseModel):
     # Exact passage extracted from the source.
     excerpt: str
 
-    # What kind of technical evidence this represents.
+    # Preserve this as a free-form field.
     #
-    # direct:
-    #     The source explicitly describes the claimed
-    #     technical functionality.
+    # This describes the TYPE/NATURE of the evidence,
+    # not its strength of support.
     #
-    # supportive:
-    #     The source describes a technically equivalent or
-    #     strongly corresponding implementation.
-    #
-    # inferential:
-    #     The source provides facts from which the claimed
-    #     functionality can reasonably be inferred.
-    #
-    # contextual:
-    #     The source is technically relevant but does not
-    #     meaningfully establish the limitation by itself.
-    #
-    # unsupported:
-    #     The excerpt does not actually support the element.
-    evidence_type: EvidenceType = "contextual"
+    # Examples:
+    # - "official product documentation"
+    # - "technical documentation"
+    # - "product specification"
+    # - "technical article"
+    # - "architecture description"
+    # - "implementation description"
+    evidence_type: str
 
-    # Human-readable explanation of why the passage is
-    # relevant to the claim element.
-    relevance: str = ""
+    # Explanation of why the excerpt is relevant.
+    relevance: str
 
 
 # ============================================================
@@ -196,13 +187,12 @@ class EvidenceVerificationResult(BaseModel):
 
     claim_element_id: str
 
-    # Retained for compatibility with the existing pipeline.
+    # Compatibility field retained for the existing pipeline.
     #
-    # True means the evidence is sufficiently supportive
-    # to contribute to element-level mapping.
+    # True means the evidence contributes meaningful support
+    # to the claim element.
     #
-    # False means the evidence should not contribute to
-    # element-level support.
+    # False means the evidence should not contribute support.
     evidence_supported: bool
 
     confidence: float = Field(
@@ -212,25 +202,28 @@ class EvidenceVerificationResult(BaseModel):
 
     reasoning: str
 
-    # More granular assessment than the old boolean.
+    # Strength/type of support established by this evidence.
     #
     # direct:
-    #     Explicit disclosure.
+    #     The source explicitly discloses the claimed
+    #     technical limitation.
     #
     # supportive:
-    #     Strong technical correspondence / equivalent
-    #     implementation.
+    #     The source provides strong technical correspondence
+    #     or an equivalent implementation.
     #
     # inferential:
-    #     Reasonable technical inference from disclosed facts.
+    #     The source does not state the limitation verbatim,
+    #     but the limitation can reasonably be inferred from
+    #     the disclosed technical facts.
     #
     # contextual:
-    #     Relevant background but insufficient to establish
-    #     the limitation.
+    #     The source is technically relevant but does not
+    #     materially establish the limitation.
     #
     # unsupported:
-    #     Does not support the limitation.
-    support_level: EvidenceType = "contextual"
+    #     The evidence does not support the limitation.
+    support_level: SupportLevel = "contextual"
 
 
 class EvidenceVerificationItem(BaseModel):
@@ -246,7 +239,7 @@ class EvidenceVerificationItem(BaseModel):
 
     reasoning: str
 
-    support_level: EvidenceType = "contextual"
+    support_level: SupportLevel = "contextual"
 
 
 class EvidenceVerificationBatchResult(BaseModel):
@@ -267,26 +260,27 @@ class VerifiedEvidence(BaseModel):
 
 
 # ============================================================
-# CLAIM-ELEMENT EVIDENCE AGGREGATION
+# EVIDENCE COMBINATION
 # ============================================================
 
 
 class EvidenceCombination(BaseModel):
 
     """
-    Represents a group of evidence items considered together
-    when assessing a claim element.
+    Represents multiple evidence items considered together.
 
-    This is important because a claim element may be supported
-    by multiple sources that establish different parts of the
-    same technical relationship.
+    A claim element does not necessarily need to be established
+    by one source or one excerpt.
+
+    Different evidence items may establish different parts of
+    the same technical relationship.
     """
 
     evidence_indexes: list[int] = Field(
         default_factory=list
     )
 
-    support_level: EvidenceType = "contextual"
+    support_level: SupportLevel = "contextual"
 
     supported: bool = False
 
@@ -299,22 +293,25 @@ class EvidenceCombination(BaseModel):
     reasoning: str = ""
 
 
+# ============================================================
+# CLAIM-ELEMENT EVIDENCE ASSESSMENT
+# ============================================================
+
+
 class ClaimElementEvidenceAssessment(BaseModel):
 
     """
     Element-level assessment after considering individual
-    evidence items and, where appropriate, combinations of
-    evidence.
+    evidence items and combinations of evidence.
 
-    This is deliberately separate from individual evidence
-    verification.
+    Individual evidence verification asks:
 
-    Individual evidence asks:
-        "What does this source establish?"
+        "What does this individual source establish?"
 
-    Element assessment asks:
-        "Do the available pieces collectively support
-         this claim element?"
+    Element-level assessment asks:
+
+        "Do the available pieces of evidence collectively
+         support this claim element?"
     """
 
     claim_element_id: str
@@ -327,7 +324,7 @@ class ClaimElementEvidenceAssessment(BaseModel):
         le=1.0,
     )
 
-    support_level: EvidenceType = "contextual"
+    support_level: SupportLevel = "contextual"
 
     evidence_indexes: list[int] = Field(
         default_factory=list
@@ -337,7 +334,7 @@ class ClaimElementEvidenceAssessment(BaseModel):
 
 
 # ============================================================
-# CLAIM ELEMENT MAPPING
+# CLAIM-ELEMENT MAPPING
 # ============================================================
 
 
@@ -356,10 +353,11 @@ class ClaimElementMapping(BaseModel):
 
     reasoning: str
 
-    # More informative than the old binary supported flag.
-    support_level: EvidenceType = "contextual"
+    # Overall strength of support for this claim element.
+    support_level: SupportLevel = "contextual"
 
-    # Evidence can be combined across multiple sources.
+    # Groups of evidence that collectively establish
+    # the claim element.
     evidence_combinations: list[EvidenceCombination] = Field(
         default_factory=list
     )
