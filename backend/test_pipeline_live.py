@@ -217,7 +217,9 @@ for search_plan in search_plans:
 
         seen_urls.add(url)
 
-        unique_results.append(result)
+        unique_results.append(
+            result
+        )
 
 
     search_results_by_element[
@@ -270,23 +272,10 @@ for element in claim_elements:
 
     sources_for_extraction = []
 
-
     print(
-        f"\n{'=' * 100}"
+        f"\nProcessing sources for claim element "
+        f"{element.id}"
     )
-
-    print(
-        f"CLAIM ELEMENT {element.id}"
-    )
-
-    print(
-        f"TEXT: {element.text}"
-    )
-
-    print(
-        f"{'=' * 100}"
-    )
-
 
     for search_result in search_results:
 
@@ -306,6 +295,11 @@ for element in claim_elements:
 
                 print(
                     f"\nSkipping source: "
+                    f"{search_result.title}"
+                )
+
+                print(
+                    f"URL: "
                     f"{search_result.url}"
                 )
 
@@ -317,26 +311,16 @@ for element in claim_elements:
                 continue
 
 
-            # ------------------------------------------------
-            # DEBUG: SHOW EXACT CONTENT SENT TO EXTRACTOR
-            # ------------------------------------------------
-
-            print(
-                "\n"
-                + "=" * 100
+            sources_for_extraction.append(
+                (
+                    search_result,
+                    reduced_content,
+                )
             )
 
-            print(
-                f"SOURCE FOR EXTRACTION"
-            )
 
             print(
-                f"Claim element: "
-                f"{element.id}"
-            )
-
-            print(
-                f"Title: "
+                f"\nSource prepared: "
                 f"{search_result.title}"
             )
 
@@ -346,36 +330,13 @@ for element in claim_elements:
             )
 
             print(
-                "\nREDUCED CONTENT SENT TO EVIDENCE EXTRACTOR:"
+                f"Original page content: "
+                f"{len(page_content)} chars"
             )
 
             print(
-                "-" * 100
-            )
-
-            print(
-                reduced_content
-            )
-
-            print(
-                "-" * 100
-            )
-
-            print(
-                f"Reduced content length: "
-                f"{len(reduced_content)} characters"
-            )
-
-            print(
-                "=" * 100
-            )
-
-
-            sources_for_extraction.append(
-                (
-                    search_result,
-                    reduced_content,
-                )
+                f"Reduced content: "
+                f"{len(reduced_content)} chars"
             )
 
 
@@ -383,6 +344,11 @@ for element in claim_elements:
 
             print(
                 f"\nSkipping source: "
+                f"{search_result.title}"
+            )
+
+            print(
+                f"URL: "
                 f"{search_result.url}"
             )
 
@@ -473,18 +439,41 @@ for element in claim_elements:
             for evidence in evidence_list:
 
                 print(
-                    f"  - Excerpt: "
-                    f"{evidence.excerpt}"
+                    "\n--- EXTRACTED EVIDENCE ---"
                 )
 
                 print(
-                    f"  - Type: "
+                    f"Source: "
+                    f"{evidence.source_title}"
+                )
+
+                print(
+                    f"URL: "
+                    f"{evidence.url}"
+                )
+
+                print(
+                    f"Evidence type: "
                     f"{evidence.evidence_type}"
                 )
 
                 print(
-                    f"  - Relevance: "
+                    f"Relevance: "
                     f"{evidence.relevance}"
+                )
+
+                print(
+                    f"Excerpt length: "
+                    f"{len(evidence.excerpt)} chars"
+                )
+
+                print(
+                    f"Excerpt:\n"
+                    f"{evidence.excerpt}"
+                )
+
+                print(
+                    "--- END EVIDENCE ---"
                 )
 
         else:
@@ -724,4 +713,46 @@ print(
 print(
     f"Reasoning: "
     f"{analysis.reasoning}"
+)
+
+
+# ============================================================
+# FINAL SUMMARY
+# ============================================================
+
+print("\n=== FINAL SUMMARY ===")
+
+print(
+    f"Claim: "
+    f"{analysis.claim_number}"
+)
+
+print(
+    f"Claim elements: "
+    f"{len(claim_elements)}"
+)
+
+print(
+    f"Search results: "
+    f"{total_search_results}"
+)
+
+print(
+    f"Potential evidence: "
+    f"{total_potential_evidence}"
+)
+
+print(
+    f"Verified evidence: "
+    f"{total_verified_evidence}"
+)
+
+print(
+    f"Coverage: "
+    f"{analysis.coverage_status}"
+)
+
+print(
+    f"Confidence: "
+    f"{analysis.confidence}"
 )
