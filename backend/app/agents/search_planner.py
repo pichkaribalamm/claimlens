@@ -32,39 +32,87 @@ evidence that may later support analysis of the claim element.
 
 IMPORTANT RULES:
 
-1. Generate multiple complementary search queries.
-2. Do not perform the searches yourself.
-3. Do not determine whether the target practices the claim.
-4. Do not make unsupported claims about the target.
-5. Use the target company, product, and technology when
+1. Analyze the claim element itself before considering
+   implementation hypotheses.
+
+2. Generate multiple complementary search queries.
+
+3. The search plan must contain THREE search layers:
+
+   Layer 1 — Direct claim-substance searches:
+   Search the core technical relationship and limitations
+   expressed directly in the claim element.
+
+   Layer 2 — Terminology and concept searches:
+   Search alternative terminology and closely related
+   technical concepts from the technology profile that
+   could describe the same claimed functionality.
+
+   Layer 3 — Implementation-hypothesis searches:
+   Search possible implementation approaches only as
+   secondary investigative paths.
+
+4. Prioritize Layer 1 over Layer 2, and Layer 2 over Layer 3.
+
+5. Do not let an implementation hypothesis replace the
+   actual claim language or core technical concept.
+
+6. At least one high-priority query should remain close to
+   the technical substance of the claim element.
+
+7. Use the target company, product, and technology when
    available.
-6. Use the technical concepts and alternative terminology
-   from the technology profile.
-7. Include both product-focused and implementation-focused
-   searches where appropriate.
-8. Prefer authoritative sources such as:
-   - manufacturer documentation
-   - manufacturer technical pages
-   - chipset/component manufacturer documentation
-   - regulatory filings
-   - standards organizations
-   - developer documentation
-   - reputable technical publications
-9. Use site-restricted queries when a particular authoritative
-   source is especially relevant.
-10. Do not assume or assert target-specific facts that are not
-    explicitly provided in the input.
-11. Treat items from the technology profile such as likely
-    components or implementation approaches as hypotheses for
-    search generation, not as established facts about the target.
-12. If a possible target architecture, chipset, component,
-    or implementation is not established by the input, do not
-    present it as confirmed in the search strategy.
-13. Avoid overly broad queries that are likely to produce
+
+8. Use technical concepts and alternative terminology from
+   the technology profile.
+
+9. Implementation hypotheses are investigative possibilities
+   only. They are not established facts about the target.
+
+10. Do not assume that a likely component, protocol,
+    architecture, interface, or implementation hypothesis
+    exists in the target.
+
+11. Do not introduce specific technologies, protocols,
+    architectures, components, interfaces, or standards
+    that are not present in the claim element or technology
+    profile merely because they are commonly associated
+    with the technology.
+
+12. If an implementation hypothesis is used in a query,
+    the rationale must make clear that it is an investigative
+    hypothesis rather than a confirmed target characteristic.
+
+13. Do not perform the searches yourself.
+
+14. Do not determine whether the target practices the claim.
+
+15. Do not make unsupported claims about the target.
+
+16. Prefer authoritative sources such as:
+    - manufacturer documentation
+    - manufacturer technical pages
+    - chipset/component manufacturer documentation
+    - regulatory filings
+    - standards organizations
+    - developer documentation
+    - reputable technical publications
+
+17. Use site-restricted queries when a particular authoritative
+    source is especially relevant.
+
+18. Avoid overly broad queries that are likely to produce
     large numbers of irrelevant results.
-14. Each query must have a clear rationale.
-15. Assign priority from 1 to 5, where 1 is highest priority.
-16. Return only the requested structured output.
+
+19. Avoid queries that are so implementation-specific that
+    they could miss evidence describing the same functionality
+    using different terminology.
+
+20. Each query must have a clear rationale.
+
+21. Assign priority from 1 to 5, where 1 is highest priority.
+
+22. Return only the requested structured output.
 
 CLAIM ELEMENT
 
@@ -194,20 +242,67 @@ evidence that may later support analysis of each claim element.
 IMPORTANT RULES:
 
 1. Analyze each claim element independently.
+
 2. Preserve the exact claim element ID in its corresponding
    search plan.
+
 3. Generate multiple complementary search queries for each
    claim element.
-4. Do not perform the searches yourself.
-5. Do not determine whether the target practices any claim.
-6. Do not make unsupported claims about the target.
-7. Use the target company, product, and technology when
+
+4. For every claim element, use THREE search layers:
+
+   Layer 1 — Direct claim-substance searches:
+   Search the core technical relationship and limitations
+   expressed directly in the claim element.
+
+   Layer 2 — Terminology and concept searches:
+   Search alternative terminology and closely related
+   technical concepts from the corresponding technology
+   profile that could describe the same claimed functionality.
+
+   Layer 3 — Implementation-hypothesis searches:
+   Search possible implementation approaches only as
+   secondary investigative paths.
+
+5. Prioritize Layer 1 over Layer 2, and Layer 2 over Layer 3.
+
+6. At least one high-priority query for every claim element
+   should remain close to the technical substance of that
+   claim element.
+
+7. Do not let an implementation hypothesis replace the
+   actual claim language or core technical concept.
+
+8. Use the target company, product, and technology when
    available.
-8. Use the technical concepts and alternative terminology
-   from the corresponding technology profile.
-9. Include both product-focused and implementation-focused
-   searches where appropriate.
-10. Prefer authoritative sources such as:
+
+9. Use technical concepts and alternative terminology from
+   the corresponding technology profile.
+
+10. Treat likely components and implementation hypotheses
+    as investigative possibilities only.
+
+11. Do not assume that a likely component, protocol,
+    architecture, interface, or implementation hypothesis
+    exists in the target.
+
+12. Do not introduce specific technologies, protocols,
+    architectures, components, interfaces, or standards
+    that are not present in the claim element or technology
+    profile merely because they are commonly associated
+    with the technology.
+
+13. If an implementation hypothesis is used in a query,
+    its rationale must make clear that it is an investigative
+    hypothesis rather than a confirmed target characteristic.
+
+14. Do not perform the searches yourself.
+
+15. Do not determine whether the target practices any claim.
+
+16. Do not make unsupported claims about the target.
+
+17. Prefer authoritative sources such as:
     - manufacturer documentation
     - manufacturer technical pages
     - chipset/component manufacturer documentation
@@ -215,21 +310,29 @@ IMPORTANT RULES:
     - standards organizations
     - developer documentation
     - reputable technical publications
-11. Use site-restricted queries when a particular authoritative
+
+18. Use site-restricted queries when a particular authoritative
     source is especially relevant.
-12. Do not assume or assert target-specific facts that are not
-    explicitly provided in the input.
-13. Treat likely components and implementation hypotheses as
-    hypotheses for search generation, not as established facts.
-14. Avoid overly broad queries that are likely to produce
+
+19. Avoid overly broad queries that are likely to produce
     large numbers of irrelevant results.
-15. Each query must have a clear rationale.
-16. Assign priority from 1 to 5, where 1 is highest priority.
-17. Return exactly one search plan for every claim element.
-18. Do not omit any claim element.
-19. Do not create search plans for claim element IDs that were
+
+20. Avoid queries that are so implementation-specific that
+    they could miss evidence describing the same functionality
+    using different terminology.
+
+21. Each query must have a clear rationale.
+
+22. Assign priority from 1 to 5, where 1 is highest priority.
+
+23. Return exactly one search plan for every claim element.
+
+24. Do not omit any claim element.
+
+25. Do not create search plans for claim element IDs that were
     not provided.
-20. Return only the requested structured output.
+
+26. Return only the requested structured output.
 
 TARGET
 
