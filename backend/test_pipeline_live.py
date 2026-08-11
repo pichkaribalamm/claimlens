@@ -13,7 +13,6 @@ from app.models.schemas import (
 )
 
 from app.services.search_service import SearchService
-from app.services.source_qualifier import SourceQualifier
 from app.services.page_fetcher import PageFetcher
 from app.services.page_content_reducer import PageContentReducer
 
@@ -53,9 +52,7 @@ print("\n=== CLAIM PARSER ===")
 
 parser = ClaimParser()
 
-parsed_claim = parser.parse(
-    claim
-)
+parsed_claim = parser.parse(claim)
 
 print(
     f"Elements found: "
@@ -63,7 +60,6 @@ print(
 )
 
 for element in parsed_claim.elements:
-
     print(
         f"- {element.id}: "
         f"{element.text}"
@@ -91,7 +87,6 @@ print(
 )
 
 for profile in technology_profiles:
-
     print(
         f"- {profile.claim_element_id}: "
         f"{profile.core_concept}"
@@ -203,7 +198,7 @@ for search_plan in search_plans:
 
 
     # --------------------------------------------------------
-    # Deduplicate search results across queries.
+    # Deduplicate search results.
     # --------------------------------------------------------
 
     unique_results = []
@@ -212,23 +207,17 @@ for search_plan in search_plans:
 
     for result in element_results:
 
-        normalized_url = str(
-            result.url
-        ).strip()
+        url = str(result.url).strip()
 
-        if not normalized_url:
+        if not url:
             continue
 
-        if normalized_url in seen_urls:
+        if url in seen_urls:
             continue
 
-        seen_urls.add(
-            normalized_url
-        )
+        seen_urls.add(url)
 
-        unique_results.append(
-            result
-        )
+        unique_results.append(result)
 
 
     search_results_by_element[
@@ -245,135 +234,12 @@ for search_plan in search_plans:
 
 total_search_results = sum(
     len(results)
-    for results in (
-        search_results_by_element.values()
-    )
+    for results in search_results_by_element.values()
 )
 
 print(
     f"\nTotal unique search results collected: "
     f"{total_search_results}"
-)
-
-
-# ============================================================
-# SOURCE QUALIFICATION
-# ============================================================
-
-print("\n=== SOURCE QUALIFICATION ===")
-
-qualifier = SourceQualifier()
-
-qualified_results_by_element = {}
-
-total_qualified = 0
-total_rejected = 0
-
-
-for element in claim_elements:
-
-    search_results = (
-        search_results_by_element.get(
-            element.id,
-            [],
-        )
-    )
-
-    qualified_results = []
-
-    print(
-        f"\nClaim element {element.id}"
-    )
-
-    for search_result in search_results:
-
-        source_type = qualifier.classify_url(
-            str(search_result.url)
-        )
-
-        qualified_result = qualifier.qualify(
-            search_result
-        )
-
-        if qualified_result is None:
-
-            total_rejected += 1
-
-            print(
-                f"\nREJECTED"
-            )
-
-            print(
-                f"Title: "
-                f"{search_result.title}"
-            )
-
-            print(
-                f"URL: "
-                f"{search_result.url}"
-            )
-
-            print(
-                f"Reason: "
-                f"{source_type}"
-            )
-
-            continue
-
-
-        qualified_results.append(
-            qualified_result
-        )
-
-        total_qualified += 1
-
-        print(
-            f"\nAPPROVED"
-        )
-
-        print(
-            f"Title: "
-            f"{qualified_result.title}"
-        )
-
-        print(
-            f"URL: "
-            f"{qualified_result.url}"
-        )
-
-        print(
-            f"Source type: "
-            f"{qualified_result.source_type}"
-        )
-
-        print(
-            f"Quality: "
-            f"{qualified_result.source_quality}"
-        )
-
-
-    qualified_results_by_element[
-        element.id
-    ] = qualified_results
-
-
-    print(
-        f"\nClaim element {element.id}: "
-        f"{len(qualified_results)} "
-        f"approved / "
-        f"{len(search_results)} "
-        f"searched"
-    )
-
-
-print(
-    f"\nTotal approved sources: "
-    f"{total_qualified}"
-)
-
-print(
-    f"Total rejected sources: "
-    f"{total_rejected}"
 )
 
 
@@ -397,14 +263,29 @@ for element in claim_elements:
         element.id
     ]
 
-    search_results = (
-        qualified_results_by_element.get(
-            element.id,
-            [],
-        )
+    search_results = search_results_by_element.get(
+        element.id,
+        [],
     )
 
     sources_for_extraction = []
+
+
+    print(
+        f"\n{'=' * 100}"
+    )
+
+    print(
+        f"CLAIM ELEMENT {element.id}"
+    )
+
+    print(
+        f"TEXT: {element.text}"
+    )
+
+    print(
+        f"{'=' * 100}"
+    )
 
 
     for search_result in search_results:
@@ -421,7 +302,6 @@ for element in claim_elements:
                 technology_profile,
             )
 
-
             if not reduced_content:
 
                 print(
@@ -435,6 +315,60 @@ for element in claim_elements:
                 )
 
                 continue
+
+
+            # ------------------------------------------------
+            # DEBUG: SHOW EXACT CONTENT SENT TO EXTRACTOR
+            # ------------------------------------------------
+
+            print(
+                "\n"
+                + "=" * 100
+            )
+
+            print(
+                f"SOURCE FOR EXTRACTION"
+            )
+
+            print(
+                f"Claim element: "
+                f"{element.id}"
+            )
+
+            print(
+                f"Title: "
+                f"{search_result.title}"
+            )
+
+            print(
+                f"URL: "
+                f"{search_result.url}"
+            )
+
+            print(
+                "\nREDUCED CONTENT SENT TO EVIDENCE EXTRACTOR:"
+            )
+
+            print(
+                "-" * 100
+            )
+
+            print(
+                reduced_content
+            )
+
+            print(
+                "-" * 100
+            )
+
+            print(
+                f"Reduced content length: "
+                f"{len(reduced_content)} characters"
+            )
+
+            print(
+                "=" * 100
+            )
 
 
             sources_for_extraction.append(
@@ -536,6 +470,23 @@ for element in claim_elements:
                 f"{search_result.title}"
             )
 
+            for evidence in evidence_list:
+
+                print(
+                    f"  - Excerpt: "
+                    f"{evidence.excerpt}"
+                )
+
+                print(
+                    f"  - Type: "
+                    f"{evidence.evidence_type}"
+                )
+
+                print(
+                    f"  - Relevance: "
+                    f"{evidence.relevance}"
+                )
+
         else:
 
             print(
@@ -628,6 +579,11 @@ for element in claim_elements:
         )
 
         print(
+            f"Excerpt: "
+            f"{evidence.excerpt}"
+        )
+
+        print(
             f"Supported: "
             f"{verification.evidence_supported}"
         )
@@ -635,6 +591,11 @@ for element in claim_elements:
         print(
             f"Confidence: "
             f"{verification.confidence}"
+        )
+
+        print(
+            f"Reasoning: "
+            f"{verification.reasoning}"
         )
 
 
