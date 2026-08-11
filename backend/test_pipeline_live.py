@@ -13,6 +13,7 @@ from app.models.schemas import (
 )
 
 from app.services.search_service import SearchService
+from app.services.source_qualifier import SourceQualifier
 from app.services.page_fetcher import PageFetcher
 from app.services.page_content_reducer import PageContentReducer
 
@@ -52,7 +53,9 @@ print("\n=== CLAIM PARSER ===")
 
 parser = ClaimParser()
 
-parsed_claim = parser.parse(claim)
+parsed_claim = parser.parse(
+    claim
+)
 
 print(
     f"Elements found: "
@@ -200,7 +203,7 @@ for search_plan in search_plans:
 
 
     # --------------------------------------------------------
-    # Deduplicate search results.
+    # Deduplicate search results across queries.
     # --------------------------------------------------------
 
     unique_results = []
@@ -209,17 +212,23 @@ for search_plan in search_plans:
 
     for result in element_results:
 
-        url = str(result.url).strip()
+        normalized_url = str(
+            result.url
+        ).strip()
 
-        if not url:
+        if not normalized_url:
             continue
 
-        if url in seen_urls:
+        if normalized_url in seen_urls:
             continue
 
-        seen_urls.add(url)
+        seen_urls.add(
+            normalized_url
+        )
 
-        unique_results.append(result)
+        unique_results.append(
+            result
+        )
 
 
     search_results_by_element[
@@ -236,12 +245,135 @@ for search_plan in search_plans:
 
 total_search_results = sum(
     len(results)
-    for results in search_results_by_element.values()
+    for results in (
+        search_results_by_element.values()
+    )
 )
 
 print(
     f"\nTotal unique search results collected: "
     f"{total_search_results}"
+)
+
+
+# ============================================================
+# SOURCE QUALIFICATION
+# ============================================================
+
+print("\n=== SOURCE QUALIFICATION ===")
+
+qualifier = SourceQualifier()
+
+qualified_results_by_element = {}
+
+total_qualified = 0
+total_rejected = 0
+
+
+for element in claim_elements:
+
+    search_results = (
+        search_results_by_element.get(
+            element.id,
+            [],
+        )
+    )
+
+    qualified_results = []
+
+    print(
+        f"\nClaim element {element.id}"
+    )
+
+    for search_result in search_results:
+
+        source_type = qualifier.classify_url(
+            str(search_result.url)
+        )
+
+        qualified_result = qualifier.qualify(
+            search_result
+        )
+
+        if qualified_result is None:
+
+            total_rejected += 1
+
+            print(
+                f"\nREJECTED"
+            )
+
+            print(
+                f"Title: "
+                f"{search_result.title}"
+            )
+
+            print(
+                f"URL: "
+                f"{search_result.url}"
+            )
+
+            print(
+                f"Reason: "
+                f"{source_type}"
+            )
+
+            continue
+
+
+        qualified_results.append(
+            qualified_result
+        )
+
+        total_qualified += 1
+
+        print(
+            f"\nAPPROVED"
+        )
+
+        print(
+            f"Title: "
+            f"{qualified_result.title}"
+        )
+
+        print(
+            f"URL: "
+            f"{qualified_result.url}"
+        )
+
+        print(
+            f"Source type: "
+            f"{qualified_result.source_type}"
+        )
+
+        print(
+            f"Quality: "
+            f"{qualified_result.source_quality}"
+        )
+
+
+    qualified_results_by_element[
+        element.id
+    ] = qualified_results
+
+
+    print(
+        f"\nClaim element {element.id}: "
+        f"{len(qualified_results)} "
+        f"approved / "
+        f"{len(search_results)} "
+        f"searched"
+    )
+
+
+print(
+    f"\nTotal approved sources: "
+    f"{total_qualified}"
+)
+
+print(
+    f"Total rejected sources: "
+    f"{total_rejected}"
 )
 
 
@@ -265,12 +397,15 @@ for element in claim_elements:
         element.id
     ]
 
-    search_results = search_results_by_element.get(
-        element.id,
-        [],
+    search_results = (
+        qualified_results_by_element.get(
+            element.id,
+            [],
+        )
     )
 
     sources_for_extraction = []
+
 
     for search_result in search_results:
 
@@ -285,6 +420,7 @@ for element in claim_elements:
                 page_content,
                 technology_profile,
             )
+
 
             if not reduced_content:
 
