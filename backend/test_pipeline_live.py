@@ -5,43 +5,49 @@ from app.agents.evidence_extractor import EvidenceExtractor
 from app.agents.evidence_verifier import EvidenceVerifier
 from app.agents.search_planner import SearchPlanner
 from app.agents.technology_profiler import TechnologyProfiler
+
 from app.models.schemas import (
     Claim,
     TargetScope,
     VerifiedEvidence,
 )
+
 from app.services.search_service import SearchService
 from app.services.page_fetcher import PageFetcher
 from app.services.page_content_reducer import PageContentReducer
 
 
+# ============================================================
+# INPUT
+# ============================================================
+
 claim = Claim(
     claim_number="1",
     text=(
-        "A method of routing network traffic through a specialized "
-        "network edge system for a communication network, the method "
-        "comprising: in an edge system controller within the "
-        "communication network: identifying criteria indicating "
-        "whether certain network traffic should be handled by the "
-        "specialized network edge system; receiving, from a first "
-        "network edge system for the communication network, first "
-        "information about first network traffic entering the "
-        "communication network through the first network edge "
-        "system from outside the communication network; and in "
-        "response to determining, based on the first information, "
-        "that the first network traffic satisfies the criteria, "
-        "routing the first network traffic through the specialized "
-        "network edge system."
+        "A system, comprising: "
+        "a battery module configured to couple to an electrical "
+        "bus via a contactor, wherein the contactor is switched "
+        "to an open state upon a fault condition; and "
+        "a control circuit configured to activate a pyrotechnic "
+        "disconnector to electrically and physically break "
+        "electrical connection between the battery module and "
+        "the electrical bus in response to detecting a current "
+        "flow along an electrical path connecting the battery "
+        "module to the electrical bus after the contactor is "
+        "switched to the open state."
     ),
 )
 
-
 target = TargetScope(
-    company="Nokia",
-    product="Cloud",
-    technology="security, communication",
+    company="Chevrolet",
+    product="EV battery",
+    technology="LGES battery",
 )
 
+
+# ============================================================
+# CLAIM PARSER
+# ============================================================
 
 print("\n=== CLAIM PARSER ===")
 
@@ -55,15 +61,17 @@ print(
 )
 
 for element in parsed_claim.elements:
-
     print(
         f"- {element.id}: "
         f"{element.text}"
     )
 
-
 claim_elements = parsed_claim.elements
 
+
+# ============================================================
+# TECHNOLOGY PROFILER
+# ============================================================
 
 print("\n=== TECHNOLOGY PROFILER ===")
 
@@ -80,18 +88,20 @@ print(
 )
 
 for profile in technology_profiles:
-
     print(
         f"- {profile.claim_element_id}: "
         f"{profile.core_concept}"
     )
-
 
 profiles_by_id = {
     profile.claim_element_id: profile
     for profile in technology_profiles
 }
 
+
+# ============================================================
+# SEARCH PLANNER
+# ============================================================
 
 print("\n=== SEARCH PLANNER ===")
 
@@ -121,19 +131,21 @@ for search_plan in search_plans:
     )
 
     for query in search_plan.queries:
-
         print(
             f"- [{query.priority}] "
             f"{query.query}"
         )
 
 
+# ============================================================
+# SEARCH SERVICE
+# ============================================================
+
 print("\n=== SEARCH SERVICE ===")
 
 search_service = SearchService()
 
 search_results_by_element = {}
-
 
 for search_plan in search_plans:
 
@@ -155,8 +167,14 @@ for search_plan in search_plans:
 
             print(
                 f"\nQuery: {query.query}"
-                f"\nPriority: {query.priority}"
-                f"\nResults: {len(results)}"
+            )
+
+            print(
+                f"Priority: {query.priority}"
+            )
+
+            print(
+                f"Results: {len(results)}"
             )
 
             element_results.extend(
@@ -166,7 +184,7 @@ for search_plan in search_plans:
         except Exception as exc:
 
             print(
-                f"\nQuery failed: "
+                f"\nSearch failed: "
                 f"{query.query}"
             )
 
@@ -174,44 +192,30 @@ for search_plan in search_plans:
                 f"Reason: {exc}"
             )
 
-
-    # --------------------------------------------------
+    # --------------------------------------------------------
     # Deduplicate search results by URL.
-    #
-    # The same source may appear for multiple queries.
-    # Preserve the first occurrence so higher-priority
-    # queries naturally retain precedence.
-    # --------------------------------------------------
+    # --------------------------------------------------------
 
-    unique_results = []
+    unique_results_by_url = {}
 
-    seen_urls = set()
+    for result in element_results:
 
-    for search_result in element_results:
+        url = str(result.url)
 
-        normalized_url = str(
-            search_result.url
-        ).strip().rstrip("/")
+        if url not in unique_results_by_url:
+            unique_results_by_url[url] = result
 
-        if normalized_url in seen_urls:
-            continue
-
-        seen_urls.add(
-            normalized_url
-        )
-
-        unique_results.append(
-            search_result
-        )
-
+    unique_results = list(
+        unique_results_by_url.values()
+    )
 
     search_results_by_element[
         search_plan.claim_element_id
     ] = unique_results
 
     print(
-        f"\nUnique search results for "
-        f"element {search_plan.claim_element_id}: "
+        f"\nUnique search results for element "
+        f"{search_plan.claim_element_id}: "
         f"{len(unique_results)}"
     )
 
@@ -221,12 +225,15 @@ total_search_results = sum(
     for results in search_results_by_element.values()
 )
 
-
 print(
     f"\nTotal unique search results collected: "
     f"{total_search_results}"
 )
 
+
+# ============================================================
+# PAGE FETCH + CONTENT REDUCTION
+# ============================================================
 
 print(
     "\n=== PAGE FETCH + CONTENT REDUCTION ==="
@@ -236,7 +243,6 @@ fetcher = PageFetcher()
 reducer = PageContentReducer()
 
 sources_by_element = {}
-
 
 for element in claim_elements:
 
@@ -251,9 +257,9 @@ for element in claim_elements:
 
     sources_for_extraction = []
 
-    # Keep the page-fetch budget capped at five sources
-    # per claim element even though we search all planned
-    # queries above.
+    # Keep the current source cap for this benchmark.
+    # We want to test the pipeline without introducing
+    # another architectural change.
     for search_result in search_results[:5]:
 
         try:
@@ -281,14 +287,12 @@ for element in claim_elements:
 
                 continue
 
-
             sources_for_extraction.append(
                 (
                     search_result,
                     reduced_content,
                 )
             )
-
 
         except Exception as exc:
 
@@ -301,11 +305,9 @@ for element in claim_elements:
                 f"Reason: {exc}"
             )
 
-
-    sources_by_element[
-        element.id
-    ] = sources_for_extraction
-
+    sources_by_element[element.id] = (
+        sources_for_extraction
+    )
 
     print(
         f"\nClaim element {element.id}: "
@@ -314,18 +316,25 @@ for element in claim_elements:
     )
 
 
-print("\n=== BATCH EVIDENCE EXTRACTION ===")
+# ============================================================
+# BATCH EVIDENCE EXTRACTION
+# ============================================================
+
+print(
+    "\n=== BATCH EVIDENCE EXTRACTION ==="
+)
 
 extractor = EvidenceExtractor()
 
 potential_evidence_by_element = {}
 
-
 for element in claim_elements:
 
-    sources_for_extraction = sources_by_element.get(
-        element.id,
-        [],
+    sources_for_extraction = (
+        sources_by_element.get(
+            element.id,
+            [],
+        )
     )
 
     if not sources_for_extraction:
@@ -341,14 +350,14 @@ for element in claim_elements:
 
         continue
 
-
-    extraction_results = extractor.extract_batch(
-        element,
-        sources_for_extraction,
+    extraction_results = (
+        extractor.extract_batch(
+            element,
+            sources_for_extraction,
+        )
     )
 
     potential_evidence = []
-
 
     for search_result, evidence_list in zip(
         (
@@ -376,11 +385,9 @@ for element in claim_elements:
                 f"{search_result.title}"
             )
 
-
     potential_evidence_by_element[
         element.id
     ] = potential_evidence
-
 
     print(
         f"\nClaim element {element.id} "
@@ -391,11 +398,8 @@ for element in claim_elements:
 
 total_potential_evidence = sum(
     len(evidence)
-    for evidence in (
-        potential_evidence_by_element.values()
-    )
+    for evidence in potential_evidence_by_element.values()
 )
-
 
 print(
     f"\nTotal potential evidence findings: "
@@ -403,12 +407,17 @@ print(
 )
 
 
-print("\n=== BATCH EVIDENCE VERIFICATION ===")
+# ============================================================
+# BATCH EVIDENCE VERIFICATION
+# ============================================================
+
+print(
+    "\n=== BATCH EVIDENCE VERIFICATION ==="
+)
 
 verifier = EvidenceVerifier()
 
 verified_evidence_by_element = {}
-
 
 for element in claim_elements:
 
@@ -432,15 +441,14 @@ for element in claim_elements:
 
         continue
 
-
-    verification_results = verifier.verify_batch(
-        element,
-        potential_evidence,
+    verification_results = (
+        verifier.verify_batch(
+            element,
+            potential_evidence,
+        )
     )
 
-
     verified_evidence = []
-
 
     for evidence, verification in zip(
         potential_evidence,
@@ -462,7 +470,6 @@ for element in claim_elements:
             f"{verification.confidence}"
         )
 
-
         if verification.evidence_supported:
 
             verified_evidence.append(
@@ -472,11 +479,9 @@ for element in claim_elements:
                 )
             )
 
-
     verified_evidence_by_element[
         element.id
     ] = verified_evidence
-
 
     print(
         f"\nClaim element {element.id} "
@@ -487,11 +492,8 @@ for element in claim_elements:
 
 total_verified_evidence = sum(
     len(evidence)
-    for evidence in (
-        verified_evidence_by_element.values()
-    )
+    for evidence in verified_evidence_by_element.values()
 )
-
 
 print(
     f"\nTotal verified evidence: "
@@ -499,12 +501,15 @@ print(
 )
 
 
+# ============================================================
+# CLAIM MAPPING
+# ============================================================
+
 print("\n=== CLAIM MAPPING ===")
 
 mapper = ClaimMapper()
 
 element_mappings = []
-
 
 for element in claim_elements:
 
@@ -515,17 +520,14 @@ for element in claim_elements:
         )
     )
 
-
     mapping = mapper.map(
         element,
         verified_evidence,
     )
 
-
     element_mappings.append(
         mapping
     )
-
 
     print(
         f"\nClaim element: "
@@ -553,6 +555,10 @@ for element in claim_elements:
     )
 
 
+# ============================================================
+# CLAIM ANALYSIS
+# ============================================================
+
 print("\n=== CLAIM ANALYSIS ===")
 
 analyzer = ClaimAnalyzer()
@@ -561,7 +567,6 @@ analysis = analyzer.analyze(
     claim,
     element_mappings,
 )
-
 
 print(
     f"Claim: "
