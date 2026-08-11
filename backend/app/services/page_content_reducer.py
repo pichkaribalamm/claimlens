@@ -1,6 +1,9 @@
 import re
 
-from app.models.schemas import ClaimElement
+from app.models.schemas import (
+    ClaimElement,
+    TechnologyProfile,
+)
 
 
 class PageContentReducer:
@@ -17,13 +20,15 @@ class PageContentReducer:
         self,
         claim_element: ClaimElement,
         page_content: str,
+        technology_profile: TechnologyProfile | None = None,
     ) -> str:
 
         if not page_content:
             return ""
 
         terms = self._extract_terms(
-            claim_element.text
+            claim_element,
+            technology_profile,
         )
 
         if not terms:
@@ -91,15 +96,54 @@ class PageContentReducer:
 
     def _extract_terms(
         self,
-        text: str,
+        claim_element: ClaimElement,
+        technology_profile: TechnologyProfile | None = None,
     ) -> list[str]:
 
-        words = re.findall(
-            r"\b[a-zA-Z][a-zA-Z0-9-]{2,}\b",
-            text.lower(),
-        )
+        texts = [
+            claim_element.text,
+        ]
 
-        stop_words = {
+        if technology_profile:
+
+            texts.append(
+                technology_profile.core_concept
+            )
+
+            texts.extend(
+                technology_profile.technical_concepts
+            )
+
+            texts.extend(
+                technology_profile.alternative_terminology
+            )
+
+            texts.extend(
+                technology_profile.likely_components
+            )
+
+        terms = []
+
+        for text in texts:
+
+            words = re.findall(
+                r"\b[a-zA-Z][a-zA-Z0-9-]{2,}\b",
+                text.lower(),
+            )
+
+            for word in words:
+
+                if word in self._stop_words():
+                    continue
+
+                if word not in terms:
+                    terms.append(word)
+
+        return terms
+
+    def _stop_words(self) -> set[str]:
+
+        return {
             "the",
             "and",
             "configured",
@@ -114,14 +158,6 @@ class PageContentReducer:
             "having",
             "said",
         }
-
-        terms = [
-            word
-            for word in words
-            if word not in stop_words
-        ]
-
-        return list(dict.fromkeys(terms))
 
     def _merge_windows(
         self,
