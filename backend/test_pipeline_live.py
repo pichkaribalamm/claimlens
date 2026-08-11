@@ -17,52 +17,42 @@ from app.services.page_fetcher import PageFetcher
 from app.services.page_content_reducer import PageContentReducer
 
 
-# ==========================================================
-# CLAIM
-# ==========================================================
+# ============================================================
+# TEST CLAIM
+# ============================================================
 
 claim = Claim(
     claim_number="1",
     text=(
-        "An Access Point (AP) operating in a Wireless Local "
-        "Area Network (WLAN), wherein the AP is to initiate "
-        "an uplink (UL) multi-user (MU) simultaneous "
-        "transmission, the access point comprising a set of "
-        "one or more processors and a memory device, with "
-        "instructions causing the AP to generate a first "
-        "trigger frame that initiates the UL MU simultaneous "
-        "transmission, where the trigger frame includes "
-        "common and STA-specific attribute fields, the common "
-        "attributes field includes a cascade trigger subfield "
-        "indicating whether a second trigger frame is "
-        "scheduled, and the AP transmits the first trigger "
-        "frame through a wireless medium."
+        "A system comprising a Bluetooth Low Energy device "
+        "having a GATT characteristic, wherein the GATT "
+        "characteristic is configured to store a characteristic "
+        "value and permit a connected device to write the "
+        "characteristic value to the GATT characteristic."
     ),
 )
 
 
-# ==========================================================
+# ============================================================
 # TARGET
-# ==========================================================
+# ============================================================
 
 target = TargetScope(
-    company="Qualcomm",
-    product="FastConnect 6900",
-    technology="Wi-Fi 6E, MU-MIMO, OFDMA",
+    company="Android",
+    product="BluetoothGatt",
+    technology="Bluetooth Low Energy GATT",
 )
 
 
-# ==========================================================
+# ============================================================
 # CLAIM PARSER
-# ==========================================================
+# ============================================================
 
 print("\n=== CLAIM PARSER ===")
 
 parser = ClaimParser()
 
-parsed_claim = parser.parse(
-    claim
-)
+parsed_claim = parser.parse(claim)
 
 print(
     f"Elements found: "
@@ -76,24 +66,20 @@ for element in parsed_claim.elements:
         f"{element.text}"
     )
 
-claim_elements = (
-    parsed_claim.elements
-)
+claim_elements = parsed_claim.elements
 
 
-# ==========================================================
+# ============================================================
 # TECHNOLOGY PROFILER
-# ==========================================================
+# ============================================================
 
 print("\n=== TECHNOLOGY PROFILER ===")
 
 profiler = TechnologyProfiler()
 
-technology_profiles = (
-    profiler.profile_batch(
-        claim_elements,
-        target,
-    )
+technology_profiles = profiler.profile_batch(
+    claim_elements,
+    target,
 )
 
 print(
@@ -114,20 +100,18 @@ profiles_by_id = {
 }
 
 
-# ==========================================================
+# ============================================================
 # SEARCH PLANNER
-# ==========================================================
+# ============================================================
 
 print("\n=== SEARCH PLANNER ===")
 
 planner = SearchPlanner()
 
-search_plans = (
-    planner.plan_batch(
-        claim_elements,
-        target,
-        technology_profiles,
-    )
+search_plans = planner.plan_batch(
+    claim_elements,
+    target,
+    technology_profiles,
 )
 
 print(
@@ -155,9 +139,9 @@ for search_plan in search_plans:
         )
 
 
-# ==========================================================
+# ============================================================
 # SEARCH SERVICE
-# ==========================================================
+# ============================================================
 
 print("\n=== SEARCH SERVICE ===")
 
@@ -165,13 +149,10 @@ search_service = SearchService()
 
 search_results_by_element = {}
 
-total_unique_results = 0
 
 for search_plan in search_plans:
 
     element_results = []
-
-    seen_urls = set()
 
     print(
         f"\nSearching all planned queries "
@@ -180,25 +161,6 @@ for search_plan in search_plans:
     )
 
     for query in search_plan.queries:
-
-        try:
-
-            results = search_service.search(
-                query
-            )
-
-        except Exception as exc:
-
-            print(
-                f"\nQuery failed: "
-                f"{query.query}"
-            )
-
-            print(
-                f"Reason: {exc}"
-            )
-
-            continue
 
         print(
             f"\nQuery: "
@@ -210,56 +172,82 @@ for search_plan in search_plans:
             f"{query.priority}"
         )
 
-        print(
-            f"Eligible results returned: "
-            f"{len(results)}"
-        )
+        try:
 
-        for result in results:
-
-            normalized_url = (
-                str(result.url)
-                .lower()
-                .rstrip("/")
+            results = search_service.search(
+                query
             )
 
-            if normalized_url in seen_urls:
-                continue
-
-            seen_urls.add(
-                normalized_url
+            print(
+                f"Results: "
+                f"{len(results)}"
             )
 
-            element_results.append(
-                result
+            element_results.extend(
+                results
             )
+
+        except Exception as exc:
+
+            print(
+                f"Search failed for query: "
+                f"{query.query}"
+            )
+
+            print(
+                f"Reason: {exc}"
+            )
+
+
+    # --------------------------------------------------------
+    # Deduplicate search results.
+    # --------------------------------------------------------
+
+    unique_results = []
+
+    seen_urls = set()
+
+    for result in element_results:
+
+        url = str(result.url).strip()
+
+        if not url:
+            continue
+
+        if url in seen_urls:
+            continue
+
+        seen_urls.add(url)
+
+        unique_results.append(result)
+
 
     search_results_by_element[
         search_plan.claim_element_id
-    ] = element_results
+    ] = unique_results
+
 
     print(
-        f"\nUnique eligible search results "
-        f"for element "
+        f"\nUnique search results for element "
         f"{search_plan.claim_element_id}: "
-        f"{len(element_results)}"
+        f"{len(unique_results)}"
     )
 
-    total_unique_results += (
-        len(element_results)
-    )
 
+total_search_results = sum(
+    len(results)
+    for results in search_results_by_element.values()
+)
 
 print(
-    f"\nTotal unique eligible search results "
-    f"collected: "
-    f"{total_unique_results}"
+    f"\nTotal unique search results collected: "
+    f"{total_search_results}"
 )
 
 
-# ==========================================================
+# ============================================================
 # PAGE FETCH + CONTENT REDUCTION
-# ==========================================================
+# ============================================================
 
 print(
     "\n=== PAGE FETCH + CONTENT REDUCTION ==="
@@ -270,24 +258,21 @@ reducer = PageContentReducer()
 
 sources_by_element = {}
 
+
 for element in claim_elements:
 
-    technology_profile = (
-        profiles_by_id[
-            element.id
-        ]
-    )
+    technology_profile = profiles_by_id[
+        element.id
+    ]
 
-    search_results = (
-        search_results_by_element.get(
-            element.id,
-            [],
-        )
+    search_results = search_results_by_element.get(
+        element.id,
+        [],
     )
 
     sources_for_extraction = []
 
-    for search_result in search_results[:5]:
+    for search_result in search_results:
 
         try:
 
@@ -295,12 +280,10 @@ for element in claim_elements:
                 search_result
             )
 
-            reduced_content = (
-                reducer.reduce(
-                    element,
-                    page_content,
-                    technology_profile,
-                )
+            reduced_content = reducer.reduce(
+                element,
+                page_content,
+                technology_profile,
             )
 
             if not reduced_content:
@@ -317,12 +300,14 @@ for element in claim_elements:
 
                 continue
 
+
             sources_for_extraction.append(
                 (
                     search_result,
                     reduced_content,
                 )
             )
+
 
         except Exception as exc:
 
@@ -335,9 +320,11 @@ for element in claim_elements:
                 f"Reason: {exc}"
             )
 
+
     sources_by_element[
         element.id
     ] = sources_for_extraction
+
 
     print(
         f"\nClaim element {element.id}: "
@@ -346,9 +333,9 @@ for element in claim_elements:
     )
 
 
-# ==========================================================
+# ============================================================
 # BATCH EVIDENCE EXTRACTION
-# ==========================================================
+# ============================================================
 
 print(
     "\n=== BATCH EVIDENCE EXTRACTION ==="
@@ -358,6 +345,7 @@ extractor = EvidenceExtractor()
 
 potential_evidence_by_element = {}
 
+
 for element in claim_elements:
 
     sources_for_extraction = (
@@ -366,6 +354,7 @@ for element in claim_elements:
             [],
         )
     )
+
 
     if not sources_for_extraction:
 
@@ -380,6 +369,7 @@ for element in claim_elements:
 
         continue
 
+
     extraction_results = (
         extractor.extract_batch(
             element,
@@ -387,12 +377,11 @@ for element in claim_elements:
         )
     )
 
+
     potential_evidence = []
 
-    for (
-        search_result,
-        evidence_list,
-    ) in zip(
+
+    for search_result, evidence_list in zip(
         (
             source
             for source, _ in sources_for_extraction
@@ -418,9 +407,11 @@ for element in claim_elements:
                 f"{search_result.title}"
             )
 
+
     potential_evidence_by_element[
         element.id
     ] = potential_evidence
+
 
     print(
         f"\nClaim element {element.id} "
@@ -442,9 +433,9 @@ print(
 )
 
 
-# ==========================================================
+# ============================================================
 # BATCH EVIDENCE VERIFICATION
-# ==========================================================
+# ============================================================
 
 print(
     "\n=== BATCH EVIDENCE VERIFICATION ==="
@@ -454,6 +445,7 @@ verifier = EvidenceVerifier()
 
 verified_evidence_by_element = {}
 
+
 for element in claim_elements:
 
     potential_evidence = (
@@ -462,6 +454,7 @@ for element in claim_elements:
             [],
         )
     )
+
 
     if not potential_evidence:
 
@@ -476,6 +469,7 @@ for element in claim_elements:
 
         continue
 
+
     verification_results = (
         verifier.verify_batch(
             element,
@@ -483,12 +477,11 @@ for element in claim_elements:
         )
     )
 
+
     verified_evidence = []
 
-    for (
-        evidence,
-        verification,
-    ) in zip(
+
+    for evidence, verification in zip(
         potential_evidence,
         verification_results,
     ):
@@ -508,10 +501,6 @@ for element in claim_elements:
             f"{verification.confidence}"
         )
 
-        print(
-            f"Reasoning: "
-            f"{verification.reasoning}"
-        )
 
         if verification.evidence_supported:
 
@@ -522,9 +511,11 @@ for element in claim_elements:
                 )
             )
 
+
     verified_evidence_by_element[
         element.id
     ] = verified_evidence
+
 
     print(
         f"\nClaim element {element.id} "
@@ -546,15 +537,16 @@ print(
 )
 
 
-# ==========================================================
+# ============================================================
 # CLAIM MAPPING
-# ==========================================================
+# ============================================================
 
 print("\n=== CLAIM MAPPING ===")
 
 mapper = ClaimMapper()
 
 element_mappings = []
+
 
 for element in claim_elements:
 
@@ -565,14 +557,17 @@ for element in claim_elements:
         )
     )
 
+
     mapping = mapper.map(
         element,
         verified_evidence,
     )
 
+
     element_mappings.append(
         mapping
     )
+
 
     print(
         f"\nClaim element: "
@@ -600,9 +595,9 @@ for element in claim_elements:
     )
 
 
-# ==========================================================
+# ============================================================
 # CLAIM ANALYSIS
-# ==========================================================
+# ============================================================
 
 print("\n=== CLAIM ANALYSIS ===")
 
@@ -612,6 +607,7 @@ analysis = analyzer.analyze(
     claim,
     element_mappings,
 )
+
 
 print(
     f"Claim: "
