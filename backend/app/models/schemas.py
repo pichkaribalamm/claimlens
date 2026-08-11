@@ -61,6 +61,10 @@ class TechnologyProfile(BaseModel):
     implementation_hypotheses: list[str]
 
 
+class TechnologyProfileBatchResult(BaseModel):
+    results: list[TechnologyProfile]
+
+
 class SearchPlan(BaseModel):
     claim_element_id: str
     queries: list[SearchQuery]
