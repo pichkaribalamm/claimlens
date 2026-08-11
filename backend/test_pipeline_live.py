@@ -25,17 +25,22 @@ from app.services.source_qualifier import SourceQualifier
 claim = Claim(
     claim_number="1",
     text=(
-        "A system, comprising: "
-        "a battery module configured to couple to an electrical "
-        "bus via a contactor, wherein the contactor is switched "
-        "to an open state upon a fault condition; and "
-        "a control circuit configured to activate a pyrotechnic "
-        "disconnector to electrically and physically break "
-        "electrical connection between the battery module and "
-        "the electrical bus in response to detecting a current "
-        "flow along an electrical path connecting the battery "
-        "module to the electrical bus after the contactor is "
-        "switched to the open state."
+        "A method of routing network traffic through a "
+        "specialized network edge system for a communication "
+        "network, the method comprising: "
+        "in an edge system controller within the communication "
+        "network: identifying criteria indicating whether "
+        "certain network traffic should be handled by the "
+        "specialized network edge system; "
+        "receiving, from a first network edge system for the "
+        "communication network, first information about first "
+        "network traffic entering the communication network "
+        "through the first network edge system from outside "
+        "the communication network; and "
+        "in response to determining, based on the first "
+        "information, that the first network traffic satisfies "
+        "the criteria, routing the first network traffic "
+        "through the specialized network edge system."
     ),
 )
 
@@ -45,9 +50,12 @@ claim = Claim(
 # ============================================================
 
 target = TargetScope(
-    company="Chevrolet",
-    product="EV battery",
-    technology="battery disconnect, contactor, pyrotechnic disconnector",
+    company="Nokia",
+    product="Cloud",
+    technology=(
+        "edge networking, traffic routing, "
+        "edge controller"
+    ),
 )
 
 
@@ -206,7 +214,7 @@ for search_plan in search_plans:
             )
 
     # --------------------------------------------------------
-    # Deduplicate search results.
+    # Deduplicate results.
     # --------------------------------------------------------
 
     unique_results = []
@@ -426,6 +434,11 @@ for element in claim_elements:
             )
 
             print(
+                f"URL: "
+                f"{search_result.url}"
+            )
+
+            print(
                 f"Reduced content length: "
                 f"{len(reduced_content)}"
             )
@@ -520,6 +533,16 @@ for element in claim_elements:
                 print(
                     f"Excerpt: "
                     f"{evidence.excerpt}"
+                )
+
+                print(
+                    f"Evidence type: "
+                    f"{evidence.evidence_type}"
+                )
+
+                print(
+                    f"Relevance: "
+                    f"{evidence.relevance}"
                 )
 
         else:
