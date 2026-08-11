@@ -26,27 +26,60 @@ class EvidenceExtractor:
         prompt = f"""
 You are a patent evidence extraction assistant.
 
-Your task is to examine a patent claim element and
-relevant content extracted from a publicly available
-source page.
+Your task is to identify concrete technical evidence from
+a publicly available source that may help assess a patent
+claim element.
 
-Determine whether the provided content contains
-evidence that is relevant to the claim element.
+You are an EVIDENCE EXTRACTOR, not the final verifier.
 
-IMPORTANT:
+Your job is to find useful passages from the provided source.
+Do not decide whether the claim element is ultimately proven.
 
-1. Only identify evidence that is actually supported by
-   the provided content.
-2. Do not rely on outside knowledge.
-3. Do not infer facts that are not present in the content.
-4. Extract the exact wording from the content that supports
-   the finding.
-5. Do not paraphrase the excerpt.
-6. The excerpt must come directly from the provided content.
-7. Evidence should be specific to the claim element.
-8. If the content does not contain relevant evidence,
-   return an empty list.
-9. Return only the requested structured output.
+IMPORTANT RULES:
+
+1. Use ONLY the provided source content.
+2. Do not use outside knowledge.
+3. Do not invent technical facts.
+4. Do not paraphrase the source.
+5. Every excerpt MUST be copied exactly from the provided
+   source content.
+6. Extract only passages that contain meaningful technical
+   information relevant to the claim element.
+7. Prefer concise evidence-bearing excerpts.
+8. Each excerpt should normally contain one to three sentences.
+9. Do not return large paragraphs merely because they contain
+   relevant words.
+10. A single source may contain multiple distinct pieces of
+    evidence. Return each meaningful piece separately.
+11. Different excerpts may establish different aspects of
+    the claim element.
+12. Preserve the distinction between separate technical facts.
+13. Do not require one excerpt to establish the entire claim
+    element.
+14. Do not infer facts that are absent from the source.
+15. Do not combine information from different parts of the page
+    into an excerpt that does not exist verbatim.
+16. If the source contains no meaningful technical evidence
+    relevant to the claim element, return an empty list.
+17. Return only the requested structured output.
+
+For each evidence item:
+
+- "excerpt" must be the exact wording from the provided content.
+- "evidence_type" should briefly describe the nature of the
+  source evidence, such as:
+    "product functionality"
+    "technical architecture"
+    "implementation description"
+    "product documentation"
+    "technical specification"
+    "system behavior"
+    "technical capability"
+- "relevance" should briefly explain what technical fact the
+  excerpt establishes in relation to the claim element.
+- Do not state that the claim element is proven.
+- Do not assign a support level such as direct, supportive,
+  or inferential. That decision belongs to evidence verification.
 
 CLAIM ELEMENT:
 
@@ -114,33 +147,67 @@ RELEVANT PAGE CONTENT:
         prompt = f"""
 You are a patent evidence extraction assistant.
 
-Your task is to examine a patent claim element against
-multiple relevant source pages.
+Your task is to identify concrete technical evidence from
+multiple publicly available source pages that may help assess
+a patent claim element.
 
-For each source, determine whether the provided content
-contains evidence that is relevant to the claim element.
+You are an EVIDENCE EXTRACTOR, not the final verifier.
 
-IMPORTANT:
+Evaluate each source independently.
 
-1. Evaluate each source independently.
-2. Only identify evidence that is actually supported by
-   the provided source content.
-3. Do not rely on outside knowledge.
-4. Do not infer facts that are not present in the content.
-5. Extract the exact wording from the source content that
-   supports the finding.
-6. Do not paraphrase the excerpt.
-7. Every excerpt must come directly from the corresponding
+IMPORTANT RULES:
+
+1. Use ONLY the content provided for each source.
+2. Do not use outside knowledge.
+3. Do not invent technical facts.
+4. Do not paraphrase the source.
+5. Every excerpt MUST be copied exactly from its corresponding
    source content.
-8. Evidence must be specific to the claim element.
-9. A source may contain zero, one, or multiple evidence items.
-10. If a source does not contain relevant evidence, return
-    an empty evidence list for that source.
-11. Do not use evidence from one source to support another source.
-12. Preserve every source index exactly as provided.
-13. Return exactly one result for every source index provided.
-14. Do not skip a source index.
-15. Return only the requested structured output.
+6. Extract only passages containing meaningful technical
+   information relevant to the claim element.
+7. Prefer concise evidence-bearing excerpts.
+8. Each excerpt should normally contain one to three sentences.
+9. Do not return large paragraphs merely because they contain
+   relevant words.
+10. A source may contain multiple distinct pieces of evidence.
+11. Return separate evidence items when separate passages
+    establish different technical facts.
+12. Different evidence items may establish different aspects
+    of the same claim element.
+13. Do not require one excerpt to establish the entire claim
+    element.
+14. Do not combine text from different passages into one
+    excerpt.
+15. Do not combine information from different sources into one
+    evidence item.
+16. Do not infer facts that are absent from the source.
+17. If a source contains no meaningful technical evidence
+    relevant to the claim element, return an empty evidence
+    list for that source.
+18. Preserve every source index exactly as provided.
+19. Return exactly one result for every source index that
+    contains relevant page content.
+20. Do not skip a source index.
+21. Return only the requested structured output.
+
+For each evidence item:
+
+- "excerpt" must be the exact wording from the corresponding
+  source content.
+- "evidence_type" should briefly describe the nature of the
+  source evidence, such as:
+    "product functionality"
+    "technical architecture"
+    "implementation description"
+    "product documentation"
+    "technical specification"
+    "system behavior"
+    "technical capability"
+- "relevance" should briefly explain what technical fact the
+  excerpt establishes in relation to the claim element.
+- Do not state that the claim element is proven.
+- Do not assign a support level such as direct, supportive,
+  or inferential. That decision belongs to evidence verification.
 
 CLAIM ELEMENT:
 
@@ -200,5 +267,7 @@ SOURCE PAGES:
             results_by_index.get(index, [])
             if reduced_content
             else []
-            for index, (_, reduced_content) in enumerate(sources)
+            for index, (_, reduced_content) in enumerate(
+                sources
+            )
         ]
