@@ -5,12 +5,14 @@ from app.models.schemas import (
     EvidenceExtractionResult,
 )
 from app.services.gemini_service import GeminiService
+from app.services.page_content_reducer import PageContentReducer
 
 
 class EvidenceExtractor:
 
     def __init__(self):
         self.llm = GeminiService()
+        self.reducer = PageContentReducer()
 
     def extract(
         self,
@@ -18,6 +20,14 @@ class EvidenceExtractor:
         search_result: SearchResult,
         page_content: str,
     ) -> list[Evidence]:
+
+        reduced_content = self.reducer.reduce(
+            claim_element,
+            page_content,
+        )
+
+        if not reduced_content:
+            return []
 
         prompt = f"""
 You are a patent evidence extraction assistant.
@@ -61,12 +71,9 @@ Title:
 URL:
 {search_result.url}
 
-Search Result Snippet:
-{search_result.snippet}
+RELEVANT PAGE CONTENT:
 
-PAGE CONTENT:
-
-{page_content}
+{reduced_content}
 """
 
         result = self.llm.generate(
