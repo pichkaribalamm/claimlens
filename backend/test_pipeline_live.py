@@ -5,11 +5,13 @@ from app.agents.evidence_extractor import EvidenceExtractor
 from app.agents.evidence_verifier import EvidenceVerifier
 from app.agents.search_planner import SearchPlanner
 from app.agents.technology_profiler import TechnologyProfiler
+
 from app.models.schemas import (
     Claim,
     TargetScope,
     VerifiedEvidence,
 )
+
 from app.services.search_service import SearchService
 from app.services.page_fetcher import PageFetcher
 from app.services.page_content_reducer import PageContentReducer
@@ -22,17 +24,19 @@ from app.services.page_content_reducer import PageContentReducer
 claim = Claim(
     claim_number="1",
     text=(
-        "A system, comprising: "
-        "a battery module configured to couple to an electrical "
-        "bus via a contactor, wherein the contactor is switched "
-        "to an open state upon a fault condition; and "
-        "a control circuit configured to activate a pyrotechnic "
-        "disconnector to electrically and physically break "
-        "electrical connection between the battery module and "
-        "the electrical bus in response to detecting a current "
-        "flow along an electrical path connecting the battery "
-        "module to the electrical bus after the contactor is "
-        "switched to the open state."
+        "An Access Point (AP) operating in a Wireless Local "
+        "Area Network (WLAN), wherein the AP is to initiate "
+        "an uplink (UL) multi-user (MU) simultaneous "
+        "transmission, the access point comprising a set of "
+        "one or more processors and a memory device, with "
+        "instructions causing the AP to generate a first "
+        "trigger frame that initiates the UL MU simultaneous "
+        "transmission, where the trigger frame includes "
+        "common and STA-specific attribute fields, the common "
+        "attributes field includes a cascade trigger subfield "
+        "indicating whether a second trigger frame is "
+        "scheduled, and the AP transmits the first trigger "
+        "frame through a wireless medium."
     ),
 )
 
@@ -42,9 +46,9 @@ claim = Claim(
 # ==========================================================
 
 target = TargetScope(
-    company="Chevrolet",
-    product="EV battery",
-    technology="LGES battery",
+    company="Qualcomm",
+    product="FastConnect 6900",
+    technology="Wi-Fi 6E, MU-MIMO, OFDMA",
 )
 
 
@@ -161,7 +165,6 @@ search_service = SearchService()
 
 search_results_by_element = {}
 
-total_raw_results = 0
 total_unique_results = 0
 
 for search_plan in search_plans:
@@ -212,8 +215,6 @@ for search_plan in search_plans:
             f"{len(results)}"
         )
 
-        total_raw_results += len(results)
-
         for result in results:
 
             normalized_url = (
@@ -250,7 +251,7 @@ for search_plan in search_plans:
 
 
 print(
-    f"\nTotal eligible search results "
+    f"\nTotal unique eligible search results "
     f"collected: "
     f"{total_unique_results}"
 )
@@ -505,6 +506,11 @@ for element in claim_elements:
         print(
             f"Confidence: "
             f"{verification.confidence}"
+        )
+
+        print(
+            f"Reasoning: "
+            f"{verification.reasoning}"
         )
 
         if verification.evidence_supported:
