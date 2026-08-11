@@ -26,6 +26,7 @@ class SearchService:
     }
 
     def __init__(self):
+
         self.search_engine = DDGS()
 
     def search(
@@ -47,14 +48,30 @@ class SearchService:
             if not url:
                 continue
 
+            # ------------------------------------------------
+            # Hard patent exclusion.
+            #
+            # Patents must never enter ClaimLens as relevant
+            # evidence candidates.
+            # ------------------------------------------------
+
             if self._is_patent_source(url):
                 continue
 
+            title = result.get(
+                "title",
+                "",
+            )
+
+            snippet = result.get(
+                "body"
+            )
+
             search_results.append(
                 SearchResult(
-                    title=result["title"],
+                    title=title,
                     url=url,
-                    snippet=result.get("body"),
+                    snippet=snippet,
                     source=None,
                 )
             )
@@ -69,8 +86,13 @@ class SearchService:
     ) -> bool:
 
         try:
-            parsed = urlparse(str(url))
+
+            parsed = urlparse(
+                str(url)
+            )
+
         except Exception:
+
             return False
 
         hostname = (
@@ -106,8 +128,10 @@ class SearchService:
 
         for result in results:
 
-            normalized_url = self._normalize_url(
-                result.url
+            normalized_url = (
+                self._normalize_url(
+                    result.url
+                )
             )
 
             if normalized_url in seen_urls:
