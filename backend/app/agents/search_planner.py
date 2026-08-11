@@ -13,6 +13,10 @@ class SearchPlanner:
     def __init__(self):
         self.llm = GeminiService()
 
+    # ============================================================
+    # SINGLE ELEMENT
+    # ============================================================
+
     def plan(
         self,
         claim_element: ClaimElement,
@@ -21,137 +25,199 @@ class SearchPlanner:
     ) -> SearchPlan:
 
         prompt = f"""
-You are a search strategy specialist supporting patent
-technical evidence discovery.
+You are a search strategy specialist supporting real-world
+technical evidence discovery for patent claim analysis.
 
-Your task is to create a targeted web search plan for
-one patent claim element and a specified target.
+Your task is to create a high-recall but technically focused
+web search plan for ONE claim element and a specified target.
 
-The objective is to discover publicly available technical
-evidence that may later support analysis of the claim element.
+The objective is to discover PUBLIC TECHNICAL EVIDENCE showing
+how a real product, system, component, or implementation works.
 
-IMPORTANT RULES:
+The search is NOT intended to find patents.
 
-1. First analyze the actual technical substance and
-   limitations expressed in the claim element.
 
-2. Generate multiple complementary search queries.
+============================================================
+CORE SEARCH PRINCIPLE
+============================================================
 
-3. The search plan must use the following priority structure:
+Do not simply search the claim wording repeatedly.
 
-   PRIORITY 1 — DIRECT CLAIM-SUBSTANCE SEARCH
+Translate the claim into multiple search approaches that could
+lead to the same real-world technical implementation.
 
-   At least one query MUST have priority 1.
+A strong search plan should bridge:
 
-   A priority-1 query must search for the actual technical
-   relationship, action, structure, condition, or limitation
-   expressed in the claim element.
+PATENT LANGUAGE
+        ↓
+TECHNICAL CONCEPT
+        ↓
+INDUSTRY TERMINOLOGY
+        ↓
+PRODUCT / IMPLEMENTATION TERMINOLOGY
+        ↓
+PUBLIC TECHNICAL EVIDENCE
 
-   It should remain close to the claim's technical substance,
-   while using natural technical terminology where appropriate.
 
-   Do NOT replace the claimed functionality with a presumed
-   implementation.
+============================================================
+SEARCH STRATEGIES
+============================================================
 
-   Example:
-   If the claim describes a controller receiving information
-   about incoming network traffic, search for concepts such as
-   a controller receiving traffic information, ingress traffic
-   information, or a network edge system reporting traffic
-   information.
+Use multiple complementary strategies.
 
-4. PRIORITY 2 — TERMINOLOGY / CONCEPT SEARCH
+------------------------------------------------------------
+PRIORITY 1 — CLAIM-SUBSTANCE SEARCH
+------------------------------------------------------------
 
-   At least one query MUST have priority 2.
+At least one query MUST have priority 1.
 
-   A priority-2 query should use alternative terminology or
-   closely related technical concepts from the technology
-   profile that could describe the SAME claimed functionality.
+The priority-1 query should remain close to the actual technical
+substance of the claim element.
 
-   Priority 2 may broaden terminology, but must still remain
-   technically connected to the claim element.
+Search for the:
 
-5. PRIORITY 3–5 — IMPLEMENTATION-HYPOTHESIS SEARCHES
+- technical relationship;
+- operation;
+- condition;
+- structure;
+- input/output;
+- causal relationship;
+- functional behavior.
 
-   Queries involving possible implementation approaches,
-   architectures, protocols, interfaces, components, or
-   technologies must normally have priority 3, 4, or 5.
+Do NOT merely search generic nouns.
 
-   These searches are secondary investigative paths.
+For example, if the claim describes:
 
-6. NEVER assign priority 1 or priority 2 to a query whose
-   primary basis is an unconfirmed implementation hypothesis.
+"routing traffic through a specialized network edge system
+in response to determining that traffic satisfies criteria"
 
-7. An implementation hypothesis must never replace the actual
-   claim language or core technical relationship.
+a good priority-1 search might focus on:
 
-8. Do not assume that a likely component, protocol,
-   architecture, interface, standard, or implementation
-   exists in the target.
+"traffic routing based on classification through network edge"
 
-9. Do not introduce specific technologies, protocols,
-   architectures, components, interfaces, or standards merely
-   because they are commonly associated with the technology.
+rather than:
 
-10. If an implementation hypothesis is used in a query,
-    the rationale must clearly identify it as an investigative
-    possibility rather than a confirmed characteristic of
-    the target.
+"network edge system"
 
-11. Use the target company, product, and technology when
-    available.
 
-12. Use technical concepts and alternative terminology from
-    the technology profile.
+------------------------------------------------------------
+PRIORITY 2 — INDUSTRY TERMINOLOGY SEARCH
+------------------------------------------------------------
 
-13. Prefer authoritative sources such as:
-    - manufacturer documentation
-    - manufacturer technical pages
-    - chipset/component manufacturer documentation
-    - regulatory filings
-    - standards organizations
-    - developer documentation
-    - reputable technical publications
+At least one query MUST have priority 2.
 
-14. Use site-restricted queries when a particular authoritative
-    source is especially relevant.
+Use terminology from:
 
-15. Avoid overly broad queries that are likely to produce
-    large numbers of irrelevant results.
+- alternative terminology;
+- technical concepts;
+- industry vocabulary;
+- engineering terminology;
+- functional equivalents.
 
-16. Avoid queries that are so implementation-specific that
-    they could miss evidence describing the same functionality
-    using different terminology.
+The purpose is to catch sources that describe the same
+functionality without using patent terminology.
 
-17. Do not perform the searches yourself.
+Do NOT simply repeat the priority-1 query with one word changed.
 
-18. Do not determine whether the target practices the claim.
+The priority-2 query should represent a genuinely different
+terminology path.
 
-19. Do not make unsupported claims about the target.
 
-20. Each query must have a clear rationale.
+------------------------------------------------------------
+PRIORITY 3 — TARGET / PRODUCT IMPLEMENTATION SEARCH
+------------------------------------------------------------
 
-21. Assign priority from 1 to 5, where 1 is highest priority.
+Where target information is available, use the:
 
-22. The final output MUST contain:
-    - at least one priority-1 query
-    - at least one priority-2 query
-    - zero priority-1 queries based primarily on implementation
-      hypotheses
-    - zero priority-2 queries based primarily on implementation
-      hypotheses
+- company;
+- product;
+- platform;
+- technology;
 
-23. Return only the requested structured output.
+together with a technically meaningful concept from the claim.
 
-CLAIM ELEMENT
+The purpose is to find evidence specifically connected to the
+target.
 
-ID:
-{claim_element.id}
+This is an investigative search.
 
-TEXT:
-{claim_element.text}
+It does NOT mean that the target is known to implement the
+feature.
 
-TARGET
+
+------------------------------------------------------------
+PRIORITY 4 — COMPONENT / ARCHITECTURE SEARCH
+------------------------------------------------------------
+
+Where useful, search for likely components, subsystems,
+architectures, or implementation locations from the technology
+profile.
+
+Examples:
+
+- controller;
+- gateway;
+- routing module;
+- battery management system;
+- contactor;
+- protocol layer;
+- communication subsystem.
+
+Use these only when they provide a plausible route to finding
+the claimed functionality.
+
+Do not turn a generic component into an assumed target fact.
+
+
+------------------------------------------------------------
+PRIORITY 5 — DISTINCTIVE COMBINATION SEARCH
+------------------------------------------------------------
+
+Where useful, combine two or more distinctive technical
+concepts from the claim.
+
+The purpose is to search for the technical fingerprint of the
+claim rather than generic individual concepts.
+
+For example:
+
+"traffic classification" + "specialized edge routing"
+
+is more useful than:
+
+"network traffic"
+
+alone.
+
+
+============================================================
+IMPORTANT: SEARCH DIVERSITY
+============================================================
+
+Queries must be meaningfully different.
+
+Do NOT produce:
+
+1. "Bluetooth GATT characteristic value"
+2. "GATT characteristic value Bluetooth"
+3. "Bluetooth characteristic value GATT"
+
+These are effectively the same search.
+
+Instead produce different discovery paths, such as:
+
+1. claim relationship;
+2. industry terminology;
+3. target/product implementation;
+4. component architecture;
+5. distinctive technical combination.
+
+
+============================================================
+TARGET INFORMATION
+============================================================
+
+Use target information when available.
 
 Company:
 {target.company}
@@ -162,7 +228,16 @@ Product:
 Technology:
 {target.technology}
 
+If a target field is missing, do not invent it.
+
+Do not claim that the target implements anything.
+
+Target-specific queries are investigative only.
+
+
+============================================================
 TECHNOLOGY PROFILE
+============================================================
 
 Core concept:
 {technology_profile.core_concept}
@@ -178,6 +253,201 @@ Likely components:
 
 Implementation hypotheses:
 {technology_profile.implementation_hypotheses}
+
+
+============================================================
+IMPLEMENTATION HYPOTHESES
+============================================================
+
+Implementation hypotheses may be used to generate exploratory
+queries.
+
+They must NEVER be presented as established target facts.
+
+For example:
+
+Hypothesis:
+"The functionality may reside in a network edge controller."
+
+Acceptable search:
+
+"[target] network edge controller traffic routing"
+
+Not acceptable reasoning:
+
+"The target uses a network edge controller."
+
+
+============================================================
+SOURCE DISCOVERY
+============================================================
+
+Searches should be designed to find:
+
+- official manufacturer documentation;
+- product documentation;
+- developer documentation;
+- technical specifications;
+- engineering manuals;
+- component documentation;
+- standards;
+- regulatory filings;
+- technical support documentation;
+- reputable technical publications;
+- product architecture documentation;
+- implementation guides.
+
+Do not optimize queries for patent databases.
+
+
+============================================================
+SITE-RESTRICTED SEARCHES
+============================================================
+
+Where the target or technology has a clearly relevant
+authoritative domain, a site-restricted query may be useful.
+
+Examples:
+
+site:developer.android.com
+
+site:learn.microsoft.com
+
+site:cisco.com
+
+Use site restrictions only when they are genuinely relevant.
+
+Do not invent domains.
+
+
+============================================================
+QUERY CONSTRUCTION
+============================================================
+
+Queries should generally contain technically meaningful terms.
+
+Avoid:
+
+- extremely generic terms;
+- long copies of the entire claim;
+- unnecessary legal language;
+- excessive quotation marks;
+- assumed implementation details;
+- unsupported company-specific terminology.
+
+Use quotation marks selectively for distinctive technical
+phrases.
+
+Prefer concise technical searches that search engines can
+actually retrieve useful pages for.
+
+
+============================================================
+PATENTS
+============================================================
+
+Do NOT intentionally search for patents.
+
+Do NOT include patent databases as preferred sources.
+
+The objective is real-world technical evidence.
+
+Patent results will also be filtered by the search service.
+
+
+============================================================
+QUERY PRIORITY
+============================================================
+
+Priority meaning:
+
+1 = strongest / most directly connected
+
+2 = terminology / concept expansion
+
+3 = target or product implementation investigation
+
+4 = component / architecture investigation
+
+5 = broader or highly exploratory technical path
+
+
+Priority is a ranking of investigative value.
+
+It is NOT a confidence score.
+
+
+============================================================
+NUMBER OF QUERIES
+============================================================
+
+Generate approximately 3–5 queries.
+
+Do not generate multiple nearly identical queries.
+
+For a simple claim element, 3 strong queries may be enough.
+
+For a technically complex element, 4–5 complementary queries
+may be appropriate.
+
+
+============================================================
+RATIONALE
+============================================================
+
+Every query must have a concise rationale explaining:
+
+1. what technical concept the query targets; and
+2. why this search path could find real-world evidence.
+
+For target-specific or implementation-hypothesis queries,
+explicitly indicate that the search is investigative.
+
+
+============================================================
+FINAL SELF-CHECK
+============================================================
+
+Before returning the search plan:
+
+1. Is there at least one priority-1 query?
+
+2. Is there at least one priority-2 query?
+
+3. Are the queries genuinely different?
+
+4. Does at least one query search the actual claim substance?
+
+5. Does at least one query use alternative industry terminology?
+
+6. If target information is available, does at least one query
+   investigate the target/product?
+
+7. Are implementation hypotheses used only as investigative
+   paths?
+
+8. Did I avoid treating a hypothesis as a fact?
+
+9. Are the searches suitable for finding real-world technical
+   documentation?
+
+10. Did I avoid intentionally searching patent databases?
+
+11. Does every query have a clear rationale?
+
+
+============================================================
+CLAIM ELEMENT
+============================================================
+
+ID:
+{claim_element.id}
+
+TEXT:
+{claim_element.text}
+
+
+Return only the requested structured output.
 """
 
         result = self.llm.generate(
@@ -185,26 +455,20 @@ Implementation hypotheses:
             response_schema=SearchPlan,
         )
 
-        parsed = SearchPlan.model_validate_json(result)
+        parsed = SearchPlan.model_validate_json(
+            result
+        )
 
-        priorities = [
-            query.priority
-            for query in parsed.queries
-        ]
-
-        if 1 not in priorities:
-            raise ValueError(
-                "Search plan must contain at least one "
-                "priority-1 query."
-            )
-
-        if 2 not in priorities:
-            raise ValueError(
-                "Search plan must contain at least one "
-                "priority-2 query."
-            )
+        self._validate_plan(
+            parsed,
+            claim_element.id,
+        )
 
         return parsed
+
+    # ============================================================
+    # BATCH
+    # ============================================================
 
     def plan_batch(
         self,
@@ -231,7 +495,9 @@ Implementation hypotheses:
                 "Technology profiles do not match claim element IDs."
             )
 
-        if len(technology_profiles) != len(claim_elements):
+        if len(technology_profiles) != len(
+            claim_elements
+        ):
             raise ValueError(
                 "Technology profiles do not match claim element IDs."
             )
@@ -245,7 +511,9 @@ Implementation hypotheses:
 
         for element in claim_elements:
 
-            profile = profiles_by_id[element.id]
+            profile = profiles_by_id[
+                element.id
+            ]
 
             element_sections.append(
                 f"""
@@ -275,134 +543,160 @@ Implementation hypotheses:
             )
 
         prompt = f"""
-You are a search strategy specialist supporting patent
-technical evidence discovery.
+You are a search strategy specialist supporting real-world
+technical evidence discovery for patent claim analysis.
 
-Your task is to create targeted web search plans for
-multiple patent claim elements and a specified target.
+Create targeted web search plans for MULTIPLE claim elements.
 
-You must create one independent search plan for every
-claim element provided.
+Produce exactly one independent search plan for every claim
+element provided.
 
-The objective is to discover publicly available technical
-evidence that may later support analysis of each claim element.
+The objective is to discover PUBLIC TECHNICAL EVIDENCE showing
+how a real product, system, component, or implementation works.
 
-IMPORTANT RULES:
+Do NOT optimize for finding patents.
 
-1. Analyze each claim element independently.
 
-2. Preserve the exact claim element ID in its corresponding
-   search plan.
+============================================================
+CORE SEARCH PRINCIPLE
+============================================================
 
-3. Generate multiple complementary search queries for
-   every claim element.
+Do not simply repeat claim language.
 
-4. Every claim element MUST use the following priority
-   structure:
+Translate each claim element through multiple discovery paths:
 
-   PRIORITY 1 — DIRECT CLAIM-SUBSTANCE SEARCH
+PATENT LANGUAGE
+        ↓
+TECHNICAL CONCEPT
+        ↓
+INDUSTRY TERMINOLOGY
+        ↓
+PRODUCT / IMPLEMENTATION TERMINOLOGY
+        ↓
+PUBLIC TECHNICAL EVIDENCE
 
-   Every claim element MUST have at least one priority-1
-   query.
 
-   The priority-1 query must search the actual technical
-   relationship, action, structure, condition, or limitation
-   expressed in that claim element.
+============================================================
+SEARCH STRATEGIES
+============================================================
 
-   Keep the query close to the claim's technical substance.
+Each claim element should use several complementary strategies.
 
-   Do not replace the claimed functionality with a presumed
-   implementation.
 
-5. PRIORITY 2 — TERMINOLOGY / CONCEPT SEARCH
+------------------------------------------------------------
+PRIORITY 1 — CLAIM-SUBSTANCE
+------------------------------------------------------------
 
-   Every claim element MUST have at least one priority-2
-   query.
+Every claim element MUST have at least one priority-1 query.
 
-   The priority-2 query should use alternative terminology
-   or closely related technical concepts from the corresponding
-   technology profile that could describe the same claimed
-   functionality.
+Search the actual technical:
 
-6. PRIORITY 3–5 — IMPLEMENTATION-HYPOTHESIS SEARCHES
+- relationship;
+- action;
+- structure;
+- condition;
+- operation;
+- causal relationship;
+- functional behavior.
 
-   Queries involving possible implementation approaches,
-   architectures, protocols, interfaces, components, or
-   technologies must normally have priority 3, 4, or 5.
+Keep the query close to the technical substance.
 
-   These are secondary investigative paths only.
 
-7. NEVER assign priority 1 or priority 2 to a query whose
-   primary basis is an unconfirmed implementation hypothesis.
+------------------------------------------------------------
+PRIORITY 2 — INDUSTRY TERMINOLOGY
+------------------------------------------------------------
 
-8. Do not allow an implementation hypothesis to replace
-   the actual claim language or core technical relationship.
+Every claim element MUST have at least one priority-2 query.
 
-9. Do not assume that a likely component, protocol,
-   architecture, interface, standard, or implementation
-   exists in the target.
+Use:
 
-10. Do not introduce specific technologies, protocols,
-    architectures, components, interfaces, or standards
-    merely because they are commonly associated with the
-    technology.
+- alternative terminology;
+- technical concepts;
+- engineering terminology;
+- industry vocabulary;
+- functional equivalents.
 
-11. If an implementation hypothesis is used in a query,
-    the rationale must clearly identify it as an investigative
-    possibility rather than a confirmed characteristic of
-    the target.
+The query must provide a genuinely different terminology path
+from the priority-1 query.
 
-12. Use the target company, product, and technology when
-    available.
 
-13. Use technical concepts and alternative terminology from
-    the corresponding technology profile.
+------------------------------------------------------------
+PRIORITY 3 — TARGET / PRODUCT
+------------------------------------------------------------
 
-14. Prefer authoritative sources such as:
-    - manufacturer documentation
-    - manufacturer technical pages
-    - chipset/component manufacturer documentation
-    - regulatory filings
-    - standards organizations
-    - developer documentation
-    - reputable technical publications
+Where target information is available, use priority-3 searches
+to investigate:
 
-15. Use site-restricted queries when a particular authoritative
-    source is especially relevant.
+- company;
+- product;
+- platform;
+- technology;
 
-16. Avoid overly broad queries that are likely to produce
-    large numbers of irrelevant results.
+combined with meaningful technical concepts from the claim.
 
-17. Avoid queries that are so implementation-specific that
-    they could miss evidence describing the same functionality
-    using different terminology.
+These are investigative searches only.
 
-18. Do not perform the searches yourself.
+Do NOT assume that the target implements the claim.
 
-19. Do not determine whether the target practices any claim.
 
-20. Do not make unsupported claims about the target.
+------------------------------------------------------------
+PRIORITY 4 — COMPONENT / ARCHITECTURE
+------------------------------------------------------------
 
-21. Each query must have a clear rationale.
+Where useful, investigate likely:
 
-22. Assign priority from 1 to 5, where 1 is highest priority.
+- components;
+- subsystems;
+- architectures;
+- modules;
+- protocols;
+- implementation locations.
 
-23. For EVERY claim element, the output MUST contain:
-    - at least one priority-1 query
-    - at least one priority-2 query
-    - implementation-hypothesis queries, if any, at priority
-      3 or lower
+These come from the technology profile.
 
-24. Do not omit any claim element.
+Do not treat them as confirmed target characteristics.
 
-25. Do not create search plans for claim element IDs that
-    were not provided.
 
-26. Return exactly one search plan for every claim element.
+------------------------------------------------------------
+PRIORITY 5 — DISTINCTIVE TECHNICAL COMBINATION
+------------------------------------------------------------
 
-27. Return only the requested structured output.
+Where useful, combine multiple distinctive concepts from the
+claim element to search for its technical fingerprint.
 
+Avoid generic searches.
+
+
+============================================================
+SEARCH DIVERSITY
+============================================================
+
+Do not generate several versions of the same query.
+
+Bad:
+
+"BLE GATT characteristic value"
+
+"GATT characteristic value BLE"
+
+"Bluetooth GATT characteristic value"
+
+Good:
+
+1. claim relationship search;
+
+2. alternative industry terminology search;
+
+3. target/product implementation search;
+
+4. component/architecture search;
+
+5. distinctive technical combination search.
+
+
+============================================================
 TARGET
+============================================================
 
 Company:
 {target.company}
@@ -413,9 +707,144 @@ Product:
 Technology:
 {target.technology}
 
-CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
+
+Use target information when available.
+
+Never invent missing target information.
+
+
+============================================================
+SOURCE ORIENTATION
+============================================================
+
+Design searches to find:
+
+- official manufacturer documentation;
+- product documentation;
+- developer documentation;
+- engineering manuals;
+- technical specifications;
+- component manufacturer documentation;
+- standards;
+- regulatory filings;
+- technical support documentation;
+- reputable technical publications;
+- implementation guides.
+
+
+============================================================
+IMPLEMENTATION HYPOTHESES
+============================================================
+
+Implementation hypotheses may be used as exploratory search paths.
+
+They are NOT established facts.
+
+If a hypothesis is used, the query rationale should identify
+it as an investigative possibility.
+
+
+============================================================
+PATENTS
+============================================================
+
+Do not intentionally search for patents.
+
+Do not include patent databases as preferred sources.
+
+The goal is real-world product and technical evidence.
+
+
+============================================================
+QUERY RULES
+============================================================
+
+Each claim element should generally receive 3–5 queries.
+
+Queries must be:
+
+- technically meaningful;
+- concise;
+- complementary;
+- useful for web search;
+- grounded in the claim or technology profile.
+
+Avoid:
+
+- generic searches;
+- complete claim copies;
+- excessive legal language;
+- excessive quotation marks;
+- unsupported assumptions;
+- repetitive queries.
+
+
+============================================================
+RATIONALE
+============================================================
+
+Every query requires a concise rationale.
+
+Explain:
+
+1. what technical concept it searches; and
+2. why that search could discover relevant public technical
+   evidence.
+
+For target or implementation searches, make clear that the
+search is investigative.
+
+
+============================================================
+OUTPUT REQUIREMENTS
+============================================================
+
+For EVERY claim element:
+
+1. Return exactly one search plan.
+
+2. Preserve the exact claim element ID.
+
+3. Include at least one priority-1 query.
+
+4. Include at least one priority-2 query.
+
+5. Use priority 3–5 for implementation-oriented searches.
+
+6. Do not create priority-1 or priority-2 searches whose main
+   basis is an unconfirmed implementation hypothesis.
+
+7. Do not omit claim elements.
+
+8. Do not create plans for unknown IDs.
+
+9. Queries must be meaningfully different.
+
+10. Return only the requested structured output.
+
+
+============================================================
+TARGET
+============================================================
+
+Company:
+{target.company}
+
+Product:
+{target.product}
+
+Technology:
+{target.technology}
+
+
+============================================================
+CLAIM ELEMENTS AND TECHNOLOGY PROFILES
+============================================================
 
 {chr(10).join(element_sections)}
+
+
+Return only the requested structured output.
 """
 
         result = self.llm.generate(
@@ -423,8 +852,9 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
             response_schema=SearchPlanBatchResult,
         )
 
-        parsed = SearchPlanBatchResult.model_validate_json(
-            result
+        parsed = (
+            SearchPlanBatchResult
+            .model_validate_json(result)
         )
 
         actual_ids = [
@@ -432,7 +862,9 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
             for plan in parsed.results
         ]
 
-        actual_id_set = set(actual_ids)
+        actual_id_set = set(
+            actual_ids
+        )
 
         if actual_id_set != expected_element_ids:
             raise ValueError(
@@ -440,7 +872,9 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
                 "invalid claim element IDs."
             )
 
-        if len(actual_ids) != len(expected_element_ids):
+        if len(actual_ids) != len(
+            expected_element_ids
+        ):
             raise ValueError(
                 "Search plan batch returned "
                 "duplicate claim element IDs."
@@ -448,24 +882,10 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
 
         for plan in parsed.results:
 
-            priorities = [
-                query.priority
-                for query in plan.queries
-            ]
-
-            if 1 not in priorities:
-                raise ValueError(
-                    f"Search plan for claim element "
-                    f"{plan.claim_element_id} must contain "
-                    "at least one priority-1 query."
-                )
-
-            if 2 not in priorities:
-                raise ValueError(
-                    f"Search plan for claim element "
-                    f"{plan.claim_element_id} must contain "
-                    "at least one priority-2 query."
-                )
+            self._validate_plan(
+                plan,
+                plan.claim_element_id,
+            )
 
         plans_by_id = {
             plan.claim_element_id: plan
@@ -476,3 +896,81 @@ CLAIM ELEMENTS AND TECHNOLOGY PROFILES:
             plans_by_id[element.id]
             for element in claim_elements
         ]
+
+    # ============================================================
+    # VALIDATION
+    # ============================================================
+
+    def _validate_plan(
+        self,
+        plan: SearchPlan,
+        claim_element_id: str,
+    ) -> None:
+
+        if not plan.queries:
+            raise ValueError(
+                f"Search plan for claim element "
+                f"{claim_element_id} contains no queries."
+            )
+
+        priorities = [
+            query.priority
+            for query in plan.queries
+        ]
+
+        # --------------------------------------------------------
+        # Mandatory direct search.
+        # --------------------------------------------------------
+
+        if 1 not in priorities:
+
+            raise ValueError(
+                f"Search plan for claim element "
+                f"{claim_element_id} must contain "
+                "at least one priority-1 query."
+            )
+
+        # --------------------------------------------------------
+        # Mandatory terminology/concept expansion.
+        # --------------------------------------------------------
+
+        if 2 not in priorities:
+
+            raise ValueError(
+                f"Search plan for claim element "
+                f"{claim_element_id} must contain "
+                "at least one priority-2 query."
+            )
+
+        # --------------------------------------------------------
+        # Validate priority range explicitly even though the
+        # Pydantic schema also constrains it.
+        # --------------------------------------------------------
+
+        for query in plan.queries:
+
+            if query.priority < 1:
+                raise ValueError(
+                    f"Invalid search priority "
+                    f"{query.priority} for claim element "
+                    f"{claim_element_id}."
+                )
+
+            if query.priority > 5:
+                raise ValueError(
+                    f"Invalid search priority "
+                    f"{query.priority} for claim element "
+                    f"{claim_element_id}."
+                )
+
+            if not query.query.strip():
+                raise ValueError(
+                    f"Empty search query for claim element "
+                    f"{claim_element_id}."
+                )
+
+            if not query.rationale.strip():
+                raise ValueError(
+                    f"Search query has no rationale for "
+                    f"claim element {claim_element_id}."
+                )
