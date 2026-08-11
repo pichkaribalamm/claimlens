@@ -14,7 +14,7 @@ class EvidenceExtractor:
         self.llm = GeminiService()
 
     # ============================================================
-    # SINGLE SOURCE
+    # SINGLE SOURCE EXTRACTION
     # ============================================================
 
     def extract(
@@ -28,327 +28,22 @@ class EvidenceExtractor:
             return []
 
         prompt = f"""
-You are a high-recall technical evidence extraction assistant
-supporting patent claim analysis.
+You are a patent evidence extraction assistant.
 
-Your task is to identify useful technical passages from a
-publicly available source that may help assess a patent claim
-element.
+Your task is to identify useful TECHNICAL EVIDENCE from the
+provided source content that may contribute to assessing a
+specific patent claim element.
 
 You are an EVIDENCE EXTRACTOR.
 
-You are NOT the final verifier.
+You are NOT the final claim mapper.
 
-Your job is to collect technically useful evidence.
+You are NOT required to determine whether the complete claim
+element is established.
 
-Do NOT decide whether the claim element is proven.
-
-
-============================================================
-CORE PRINCIPLE
-============================================================
-
-Prefer RECALL over premature rejection.
-
-If a passage contains a concrete technical fact that is
-meaningfully related to any part of the claim element, it may
-be useful evidence and should generally be extracted.
-
-The passage does NOT need to establish the complete claim
-element.
-
-A later verification and mapping stage will determine:
-
-- how directly it supports the claim;
-- whether terminology is technically equivalent;
-- whether an inference is reasonable;
-- whether multiple evidence items collectively support the
-  element.
-
-
-============================================================
-USE ONLY THE PROVIDED SOURCE
-============================================================
-
-1. Use ONLY the provided source content.
-
-2. Do not use outside knowledge to add facts.
-
-3. Do not invent technical details.
-
-4. Do not assume that the source says something merely because
-   it would be technically reasonable.
-
-5. Do not use the claim itself as evidence.
-
-6. Do not use information from another source.
-
-
-============================================================
-WHAT TO EXTRACT
-============================================================
-
-Extract passages that contain concrete technical information
-related to the claim element.
-
-Useful evidence may include:
-
-- explicit product functionality;
-- technical behavior;
-- system architecture;
-- component functionality;
-- communication behavior;
-- data flow;
-- control flow;
-- configuration;
-- interfaces;
-- protocols;
-- implementation details;
-- technical capabilities;
-- system relationships;
-- input/output behavior;
-- operating conditions;
-- technical specifications.
-
-A passage may be useful even if it establishes only ONE PART
-of the claim element.
-
-
-============================================================
-PARTIAL EVIDENCE IS VALID
-============================================================
-
-Do NOT require an excerpt to establish the entire claim element.
-
-For example, if a claim element contains:
-
-1. a controller;
-2. receiving information;
-3. determining a condition based on the information; and
-4. performing an action in response,
-
-then different source passages may establish different parts.
-
-Extract those passages separately when they are technically
-useful.
-
-Do NOT reject a useful passage merely because it does not contain
-every limitation.
-
-
-============================================================
-TECHNICAL EQUIVALENCE
-============================================================
-
-Do NOT decide whether two terms are equivalent.
-
-For example, if the claim says:
-
-"route traffic"
-
-and the source says:
-
-"traffic steering"
-
-the extractor should still consider the passage for extraction
-if the passage contains concrete technical information about the
-traffic-handling operation.
-
-The verifier will later decide how strongly that terminology
-corresponds to the claim.
-
-
-============================================================
-CLAIM RELATIONSHIPS
-============================================================
-
-Preserve technical relationships when they appear in the source.
-
-Pay attention to:
-
-- receives X from Y;
-- sends X to Y;
-- routes X through Y;
-- determines X based on Y;
-- performs X in response to Y;
-- connects X to Y;
-- configures X to perform Y;
-- stores X in Y;
-- writes X to Y;
-- reads X from Y;
-- communicates with Y;
-- controls Y.
-
-A passage containing such a relationship is particularly useful.
-
-
-============================================================
-EXCERPT REQUIREMENTS
-============================================================
-
-Every excerpt MUST:
-
-1. come directly from the provided source content;
-
-2. be copied exactly;
-
-3. preserve the original wording;
-
-4. contain enough surrounding context to understand the
-   technical fact;
-
-5. normally contain one to three sentences.
-
-Do NOT paraphrase.
-
-Do NOT rewrite.
-
-Do NOT combine separate passages into a new sentence.
-
-Do NOT create an excerpt that does not exist verbatim.
-
-
-============================================================
-EXCERPT LENGTH
-============================================================
-
-Prefer concise evidence-bearing passages.
-
-Normally use one to three sentences.
-
-A fourth sentence is acceptable only when necessary to preserve
-the technical meaning or relationship.
-
-Do NOT return entire paragraphs simply because one sentence
-contains a relevant word.
-
-Do NOT return large blocks of page content.
-
-
-============================================================
-MULTIPLE EVIDENCE ITEMS
-============================================================
-
-A source may contain multiple useful passages.
-
-Return separate evidence items when different passages establish
-different technical facts.
-
-For example:
-
-Evidence 1:
-describes the controller receiving information.
-
-Evidence 2:
-describes the controller determining a condition.
-
-Evidence 3:
-describes the resulting routing behavior.
-
-Do not merge those passages into one invented excerpt.
-
-
-============================================================
-DO NOT OVER-EXTRACT
-============================================================
-
-Do not extract passages merely because they contain:
-
-- generic technology names;
-- generic product names;
-- broad marketing language;
-- unrelated background information;
-- generic descriptions of the technology;
-- isolated claim terminology without technical substance.
-
-The passage should contain an actual technical fact that could
-reasonably contribute to later assessment.
-
-
-============================================================
-EVIDENCE TYPE
-============================================================
-
-"evidence_type" describes the TYPE OF SOURCE EVIDENCE.
-
-Use concise categories such as:
-
-- product functionality
-- technical architecture
-- implementation description
-- product documentation
-- technical specification
-- system behavior
-- technical capability
-- component functionality
-- interface description
-- protocol behavior
-- configuration
-- data flow
-- control flow
-
-Do NOT use:
-
-- direct
-- supportive
-- inferential
-- contextual
-- unsupported
-
-Those are support classifications and belong to the verification
-stage.
-
-
-============================================================
-RELEVANCE
-============================================================
-
-"relevance" should briefly explain:
-
-1. what technical fact the excerpt contains; and
-2. which aspect of the claim element that fact may help assess.
-
-Keep this concise.
-
-Do NOT say:
-
-"this proves the claim."
-
-Instead say something like:
-
-"This passage describes traffic being directed through an edge
-routing function, which may be relevant to the claimed routing
-operation."
-
-
-============================================================
-NO FINAL JUDGMENT
-============================================================
-
-Do NOT:
-
-- determine whether the claim element is supported;
-- assign a support level;
-- assign direct/supportive/inferential status;
-- decide technical equivalence;
-- perform infringement analysis;
-- determine whether the target practices the claim.
-
-
-============================================================
-EMPTY RESULT
-============================================================
-
-Return an empty evidence list only when the provided source
-content does not contain a concrete technical fact that could
-reasonably contribute to assessing the claim element.
-
-Do NOT return an empty list merely because:
-
-- the passage does not establish the entire element;
-- the source uses different terminology;
-- the relationship is only one part of the element;
-- another evidence item would be needed to establish the rest.
+Your job is to preserve concrete technical facts from the
+source that could later be used by a separate verification
+and claim-mapping stage.
 
 
 ============================================================
@@ -366,7 +61,7 @@ TEXT:
 SOURCE
 ============================================================
 
-Title:
+TITLE:
 {search_result.title}
 
 URL:
@@ -380,6 +75,295 @@ SOURCE CONTENT
 {reduced_content}
 
 
+============================================================
+PRIMARY OBJECTIVE
+============================================================
+
+Find concrete technical passages that may contribute to
+establishing one or more parts of the claim element.
+
+A useful evidence item may establish:
+
+- a component;
+- a structure;
+- an operation;
+- a function;
+- a condition;
+- an input;
+- an output;
+- a technical relationship;
+- a data flow;
+- a control flow;
+- a system interaction;
+- a sequencing relationship;
+- an implementation detail;
+- a technical capability;
+- a product behavior.
+
+
+============================================================
+PARTIAL EVIDENCE IS VALID
+============================================================
+
+An evidence excerpt does NOT need to establish the complete
+claim element.
+
+For example, if a claim element contains:
+
+A + B + C + D
+
+and the source contains a passage establishing:
+
+B + C
+
+that passage is still valuable evidence.
+
+Do NOT reject it merely because A and D are not present.
+
+Another source or another passage may establish A or D.
+
+The later claim mapper will determine whether the available
+evidence collectively supports the complete element.
+
+
+============================================================
+PRESERVE TECHNICAL RELATIONSHIPS
+============================================================
+
+Pay particular attention to relationships such as:
+
+- receives X from Y;
+- sends X to Y;
+- routes X through Y;
+- determines X based on Y;
+- performs X in response to Y;
+- identifies X according to Y;
+- selects X based on Y;
+- stores X in Y;
+- writes X to Y;
+- reads X from Y;
+- controls X using Y;
+- connects X to Y;
+- communicates with Y;
+- traffic entering through X;
+- traffic originating from X;
+- information received from X;
+- data associated with X;
+- a component interacting with another component.
+
+
+A passage that establishes a relationship can be more valuable
+than a passage that merely mentions the relevant components.
+
+
+============================================================
+TECHNICAL TERMINOLOGY
+============================================================
+
+Do not require exact claim terminology.
+
+A source may use:
+
+- different component names;
+- implementation-specific terminology;
+- abbreviated terminology;
+- engineering terminology;
+- product terminology;
+- equivalent technical expressions.
+
+If the source clearly describes a related technical concept,
+extract it.
+
+Do NOT discard evidence merely because the wording differs
+from the claim.
+
+
+============================================================
+MULTIPLE EVIDENCE ITEMS
+============================================================
+
+A source may contain several distinct pieces of useful evidence.
+
+Return separate evidence items when different passages establish
+different technical facts.
+
+For example:
+
+Evidence 1:
+describes a network edge controller.
+
+Evidence 2:
+describes traffic entering through an edge system.
+
+Evidence 3:
+describes identifying traffic according to criteria.
+
+Evidence 4:
+describes routing selected traffic to another edge system.
+
+These may all be useful to the later mapper.
+
+Do NOT force all of these facts into one evidence item.
+
+
+============================================================
+EXCERPT RULE
+============================================================
+
+Every "excerpt" MUST be copied EXACTLY from the provided
+source content.
+
+Do NOT:
+
+- paraphrase;
+- summarize;
+- rewrite;
+- combine non-contiguous text;
+- invent connecting language;
+- change technical terminology.
+
+An excerpt may contain one, two, or three sentences when
+necessary to preserve the technical relationship.
+
+Prefer the shortest contiguous passage that preserves the
+relevant technical fact or relationship.
+
+
+============================================================
+EVIDENCE GRANULARITY
+============================================================
+
+Prefer evidence units that are:
+
+- technically meaningful;
+- specific;
+- concise;
+- independently understandable.
+
+Avoid returning:
+
+- entire sections;
+- large paragraphs;
+- generic introductions;
+- navigation text;
+- marketing language;
+- repeated boilerplate.
+
+However, do NOT cut a passage so aggressively that the
+technical relationship becomes unclear.
+
+
+============================================================
+DO NOT OVER-FILTER
+============================================================
+
+This stage should favor RECALL over final judgment.
+
+If a passage contains a plausible and technically meaningful
+connection to the claim element, it is better to preserve it
+for later verification than to discard it prematurely.
+
+Do NOT require the passage to independently prove the claim.
+
+Do NOT require every claim limitation to appear in the
+passage.
+
+
+============================================================
+DO NOT INFER
+============================================================
+
+Only extract facts that are actually present in the provided
+source content.
+
+Do not introduce facts from:
+
+- general technical knowledge;
+- memory;
+- the target product;
+- other sources;
+- assumptions about how the product works.
+
+The extractor may identify a passage as relevant, but the
+technical fact must come from the source itself.
+
+
+============================================================
+EVIDENCE TYPE
+============================================================
+
+For each evidence item, "evidence_type" should describe the
+nature of the source evidence.
+
+Examples:
+
+"product functionality"
+
+"technical architecture"
+
+"implementation description"
+
+"product documentation"
+
+"technical specification"
+
+"system behavior"
+
+"technical capability"
+
+"network behavior"
+
+"traffic handling"
+
+"controller functionality"
+
+"data flow"
+
+"technical relationship"
+
+
+Do NOT use:
+
+- "direct";
+- "supportive";
+- "inferential";
+- "contextual";
+- "unsupported"
+
+for evidence_type.
+
+Those are verification classifications and belong to the
+next pipeline stage.
+
+
+============================================================
+RELEVANCE
+============================================================
+
+The "relevance" field should briefly explain:
+
+1. what technical fact the excerpt establishes; and
+2. which part of the claim element that fact relates to.
+
+Do not state that the claim element is proven.
+
+Example:
+
+"The passage describes traffic received from an ingress edge
+system, which is relevant to the claimed receipt of information
+about traffic entering the communication network."
+
+
+============================================================
+OUTPUT
+============================================================
+
+Return every meaningful evidence item you can identify from
+the provided content.
+
+If there is genuinely no technically meaningful evidence
+related to the claim element, return an empty list.
+
 Return only the requested structured output.
 """
 
@@ -388,8 +372,9 @@ Return only the requested structured output.
             response_schema=EvidenceExtractionResult,
         )
 
-        parsed = EvidenceExtractionResult.model_validate_json(
-            result
+        parsed = (
+            EvidenceExtractionResult
+            .model_validate_json(result)
         )
 
         return parsed.evidence
@@ -422,7 +407,7 @@ Return only the requested structured output.
                     f"SOURCE INDEX: {index}\n"
                     f"TITLE: {search_result.title}\n"
                     f"URL: {search_result.url}\n\n"
-                    f"SOURCE CONTENT:\n"
+                    f"RELEVANT SOURCE CONTENT:\n"
                     f"{reduced_content}"
                 )
             )
@@ -434,305 +419,21 @@ Return only the requested structured output.
             ]
 
         prompt = f"""
-You are a high-recall technical evidence extraction assistant
-supporting patent claim analysis.
+You are a patent evidence extraction assistant.
 
-Your task is to identify useful technical passages from MULTIPLE
-publicly available sources that may help assess a patent claim
-element.
+Your task is to identify useful TECHNICAL EVIDENCE from
+multiple source pages that may contribute to assessing one
+specific patent claim element.
 
 You are an EVIDENCE EXTRACTOR.
 
-You are NOT the final verifier.
+You are NOT the final claim mapper.
 
-Your job is to collect technically useful evidence.
+You are NOT required to determine whether the complete claim
+element is established.
 
-Do NOT decide whether the claim element is proven.
-
-
-============================================================
-CORE PRINCIPLE
-============================================================
-
-Prefer RECALL over premature rejection.
-
-If a source passage contains a concrete technical fact that is
-meaningfully related to any part of the claim element, it may be
-useful evidence.
-
-The passage does NOT need to establish the complete claim
-element.
-
-Later verification and claim mapping will determine:
-
-- how directly it supports the claim;
-- whether terminology is technically equivalent;
-- whether an inference is reasonable;
-- whether multiple evidence items collectively support the
-  element.
-
-
-============================================================
-SOURCE INDEPENDENCE
-============================================================
-
-Evaluate each source independently.
-
-Use ONLY the content provided under that source's index.
-
-Never use information from one source to create evidence for
-another source.
-
-Never combine text from multiple sources into one excerpt.
-
-
-============================================================
-WHAT TO EXTRACT
-============================================================
-
-Extract passages containing concrete technical information
-related to the claim element.
-
-Useful evidence may include:
-
-- product functionality;
-- technical behavior;
-- architecture;
-- component functionality;
-- data flow;
-- control flow;
-- communication behavior;
-- configuration;
-- interface behavior;
-- protocol behavior;
-- implementation details;
-- technical capabilities;
-- technical specifications;
-- system relationships;
-- input/output behavior;
-- operating conditions.
-
-
-============================================================
-PARTIAL EVIDENCE
-============================================================
-
-A source does NOT need to establish the complete claim element.
-
-Different evidence items may establish different parts.
-
-For example, if an element contains:
-
-- receiving information;
-- determining a condition based on the information; and
-- performing an operation in response,
-
-then a source describing only the receiving operation can still
-be useful evidence.
-
-Extract it.
-
-Do not reject it merely because it does not establish the other
-limitations.
-
-
-============================================================
-TECHNICAL TERMINOLOGY
-============================================================
-
-Do NOT decide whether source terminology is technically
-equivalent to the claim terminology.
-
-If a source uses different but technically relevant terminology,
-the passage may still be extracted.
-
-The verification stage will determine the strength of the
-correspondence.
-
-
-============================================================
-TECHNICAL RELATIONSHIPS
-============================================================
-
-Preserve relationships contained in the source.
-
-Pay particular attention to:
-
-- receives X from Y;
-- sends X to Y;
-- routes X through Y;
-- determines X based on Y;
-- performs X in response to Y;
-- connects X to Y;
-- configures X to perform Y;
-- stores X in Y;
-- writes X to Y;
-- reads X from Y;
-- communicates with Y;
-- controls Y.
-
-
-============================================================
-EXCERPT REQUIREMENTS
-============================================================
-
-Every excerpt MUST:
-
-1. come directly from its corresponding source content;
-
-2. be copied exactly;
-
-3. preserve the source wording;
-
-4. contain enough context to understand the technical fact;
-
-5. normally contain one to three sentences.
-
-A fourth sentence is acceptable only when necessary to preserve
-technical meaning.
-
-Do NOT paraphrase.
-
-Do NOT combine separate passages.
-
-Do NOT invent excerpts.
-
-
-============================================================
-MULTIPLE EVIDENCE ITEMS PER SOURCE
-============================================================
-
-A source may contain multiple useful passages.
-
-Return separate evidence items when separate passages establish
-different technical facts.
-
-For example:
-
-Evidence 1:
-controller receives information.
-
-Evidence 2:
-controller determines a condition.
-
-Evidence 3:
-system performs a routing operation.
-
-Do not combine those passages unless the exact combined wording
-exists in the source.
-
-
-============================================================
-DO NOT OVER-EXTRACT
-============================================================
-
-Do not extract passages merely because they contain a relevant
-word.
-
-Avoid:
-
-- generic technology descriptions;
-- marketing statements without technical substance;
-- unrelated background information;
-- isolated terminology;
-- generic product descriptions with no technical fact.
-
-
-============================================================
-EVIDENCE TYPE
-============================================================
-
-"evidence_type" describes the TYPE OF SOURCE EVIDENCE.
-
-Use concise categories such as:
-
-- product functionality
-- technical architecture
-- implementation description
-- product documentation
-- technical specification
-- system behavior
-- technical capability
-- component functionality
-- interface description
-- protocol behavior
-- configuration
-- data flow
-- control flow
-
-Do NOT use:
-
-- direct
-- supportive
-- inferential
-- contextual
-- unsupported
-
-Those classifications belong to evidence verification.
-
-
-============================================================
-RELEVANCE
-============================================================
-
-"relevance" should briefly state:
-
-1. what technical fact the excerpt contains; and
-2. what aspect of the claim element it may help assess.
-
-Keep the explanation concise.
-
-Do NOT state that the claim is proven.
-
-
-============================================================
-NO FINAL JUDGMENT
-============================================================
-
-Do NOT:
-
-- determine whether the claim element is supported;
-- assign support levels;
-- determine technical equivalence;
-- perform infringement analysis;
-- determine whether the target practices the claim.
-
-
-============================================================
-EMPTY RESULTS
-============================================================
-
-Return an empty evidence list for a source only when that source
-does not contain a concrete technical fact that could reasonably
-contribute to assessing the claim element.
-
-Do NOT reject a source merely because its evidence is:
-
-- partial;
-- expressed using different terminology;
-- only one part of the claim element;
-- insufficient by itself.
-
-
-============================================================
-OUTPUT REQUIREMENTS
-============================================================
-
-1. Evaluate every source independently.
-
-2. Preserve every source index.
-
-3. Return exactly one result for every source index that has
-   non-empty source content.
-
-4. Do not skip a source index.
-
-5. A source may return zero, one, or multiple evidence items.
-
-6. Do not create evidence for a source index that was not
-   provided.
-
-7. Return only the requested structured output.
+Evaluate each source independently and preserve useful
+technical facts for later verification and claim mapping.
 
 
 ============================================================
@@ -753,6 +454,297 @@ SOURCE PAGES
 {chr(10).join(source_sections)}
 
 
+============================================================
+PRIMARY OBJECTIVE
+============================================================
+
+For each source, identify concrete technical passages that
+may contribute to establishing one or more parts of the
+claim element.
+
+Useful evidence may establish:
+
+- a component;
+- a structure;
+- an operation;
+- a function;
+- a condition;
+- an input;
+- an output;
+- a technical relationship;
+- data flow;
+- control flow;
+- system interaction;
+- sequencing;
+- implementation details;
+- technical capabilities;
+- product behavior.
+
+
+============================================================
+PARTIAL EVIDENCE IS VALID
+============================================================
+
+An evidence item does NOT need to establish the complete
+claim element.
+
+For example:
+
+A + B + C + D
+
+A source establishing B + C is still useful evidence.
+
+Do NOT reject it because A and D are absent.
+
+The mapper will later combine evidence from multiple passages
+and sources.
+
+
+============================================================
+TECHNICAL RELATIONSHIPS
+============================================================
+
+Pay special attention to relationships such as:
+
+- receives X from Y;
+- sends X to Y;
+- routes X through Y;
+- determines X based on Y;
+- performs X in response to Y;
+- identifies X according to Y;
+- selects X based on Y;
+- stores X in Y;
+- writes X to Y;
+- reads X from Y;
+- controls X using Y;
+- communicates with Y;
+- traffic entering through X;
+- traffic originating from X;
+- information received from X;
+- data associated with X;
+- interaction between components.
+
+
+Do not focus only on matching nouns.
+
+A passage explaining how components interact can be more
+important than a passage merely mentioning the components.
+
+
+============================================================
+TECHNICAL TERMINOLOGY
+============================================================
+
+Do not require exact claim terminology.
+
+Accept reasonable technical differences in:
+
+- component names;
+- implementation terminology;
+- product terminology;
+- engineering terminology;
+- abbreviations;
+- equivalent technical expressions.
+
+Different wording alone is NOT a reason to discard useful
+technical evidence.
+
+
+============================================================
+MULTIPLE EVIDENCE ITEMS
+============================================================
+
+A source may contain zero, one, or many evidence items.
+
+Return separate evidence items when separate passages
+establish different technical facts.
+
+For example:
+
+Evidence 1:
+controller functionality.
+
+Evidence 2:
+traffic entering through an edge system.
+
+Evidence 3:
+identification according to criteria.
+
+Evidence 4:
+routing selected traffic.
+
+Do NOT force these into one evidence item.
+
+
+============================================================
+EXCERPT RULE
+============================================================
+
+Every excerpt MUST be copied EXACTLY from its corresponding
+source content.
+
+Do NOT:
+
+- paraphrase;
+- summarize;
+- rewrite;
+- combine non-contiguous passages;
+- invent connecting language;
+- change technical terminology.
+
+An excerpt may contain one, two, or three sentences.
+
+Use the shortest contiguous passage that preserves the relevant
+technical fact or relationship.
+
+
+============================================================
+EVIDENCE GRANULARITY
+============================================================
+
+Prefer excerpts that are:
+
+- technically meaningful;
+- specific;
+- concise;
+- independently understandable.
+
+Avoid:
+
+- entire sections;
+- large paragraphs;
+- navigation;
+- marketing language;
+- generic introductions;
+- repeated boilerplate.
+
+But do not remove necessary context merely to make an excerpt
+shorter.
+
+
+============================================================
+RECALL OVER FINAL JUDGMENT
+============================================================
+
+This stage should favor RECALL.
+
+If a passage contains a plausible and technically meaningful
+connection to the claim element, preserve it for later
+verification.
+
+Do NOT require one passage to prove the complete claim.
+
+Do NOT require every limitation to appear in one excerpt.
+
+
+============================================================
+NO OUTSIDE KNOWLEDGE
+============================================================
+
+Use ONLY the provided source content.
+
+Do not introduce facts from:
+
+- general technical knowledge;
+- memory;
+- target assumptions;
+- other sources.
+
+Every extracted technical fact must be grounded in the
+corresponding source.
+
+
+============================================================
+EVIDENCE TYPE
+============================================================
+
+For each evidence item, "evidence_type" should describe the
+nature of the source evidence.
+
+Examples:
+
+"product functionality"
+
+"technical architecture"
+
+"implementation description"
+
+"product documentation"
+
+"technical specification"
+
+"system behavior"
+
+"technical capability"
+
+"network behavior"
+
+"traffic handling"
+
+"controller functionality"
+
+"data flow"
+
+"technical relationship"
+
+
+Do NOT use verification labels such as:
+
+"direct"
+
+"supportive"
+
+"inferential"
+
+"contextual"
+
+"unsupported"
+
+
+============================================================
+RELEVANCE
+============================================================
+
+Explain briefly:
+
+1. what technical fact the excerpt establishes; and
+2. which part of the claim element it relates to.
+
+Do not state that the claim element is proven.
+
+
+============================================================
+SOURCE INDEX RULES
+============================================================
+
+1. Evaluate every source independently.
+
+2. Preserve the exact source index.
+
+3. Return exactly one result for every source index that
+   contains non-empty source content.
+
+4. Do not skip a source index.
+
+5. Do not duplicate a source index.
+
+6. Do not use evidence from one source to support another
+   source.
+
+7. Every evidence excerpt must come from the corresponding
+   source.
+
+
+============================================================
+OUTPUT
+============================================================
+
+Return every meaningful evidence item identified for each
+source.
+
+If a source contains no meaningful technical evidence,
+return an empty evidence list for that source.
+
 Return only the requested structured output.
 """
 
@@ -765,6 +757,10 @@ Return only the requested structured output.
             EvidenceExtractionBatchResult
             .model_validate_json(result)
         )
+
+        # ========================================================
+        # INDEX VALIDATION
+        # ========================================================
 
         expected_indexes = {
             index
@@ -785,6 +781,7 @@ Return only the requested structured output.
         )
 
         if actual_index_set != expected_indexes:
+
             raise ValueError(
                 "Evidence extraction batch returned "
                 "invalid source indexes."
@@ -793,6 +790,7 @@ Return only the requested structured output.
         if len(actual_indexes) != len(
             expected_indexes
         ):
+
             raise ValueError(
                 "Evidence extraction batch returned "
                 "duplicate source indexes."
