@@ -17,11 +17,17 @@ class GeminiService:
                 "GEMINI_API_KEY is not configured."
             )
 
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(
+            api_key=api_key
+        )
 
-    def generate(self, prompt: str, response_schema):
+    def generate(
+        self,
+        prompt: str,
+        response_schema,
+    ):
         response = self.client.models.generate_content(
-            model="gemini-3.6-flash",
+            model="gemini-3.5-flash-lite",
             contents=prompt,
             config={
                 "response_mime_type": "application/json",
