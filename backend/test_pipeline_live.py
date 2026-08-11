@@ -229,7 +229,8 @@ with patch(
     )
 
     print(
-        "\n=== PAGE FETCH + CONTENT REDUCTION + EVIDENCE EXTRACTION ==="
+        "\n=== PAGE FETCH + CONTENT REDUCTION + "
+        "EVIDENCE EXTRACTION ==="
     )
 
     fetcher = PageFetcher()
@@ -252,9 +253,20 @@ with patch(
                 technology_profile,
             )
 
+            if not reduced_content:
+                print(
+                    f"\nSkipping source: "
+                    f"{search_result.url}"
+                )
+
+                print(
+                    "Reason: No relevant page content found."
+                )
+
+                continue
+
             evidence = extractor.extract(
                 element,
-                technology_profile,
                 search_result,
                 reduced_content,
             )
