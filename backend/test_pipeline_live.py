@@ -17,6 +17,7 @@ from app.models.schemas import (
 )
 from app.services.search_service import SearchService
 from app.services.page_fetcher import PageFetcher
+from app.services.page_content_reducer import PageContentReducer
 
 
 def mock_gemini_generate(prompt, response_schema):
@@ -228,10 +229,11 @@ with patch(
     )
 
     print(
-        "\n=== PAGE FETCH + EVIDENCE EXTRACTION ==="
+        "\n=== PAGE FETCH + CONTENT REDUCTION + EVIDENCE EXTRACTION ==="
     )
 
     fetcher = PageFetcher()
+    reducer = PageContentReducer()
     extractor = EvidenceExtractor()
 
     potential_evidence = []
@@ -244,11 +246,17 @@ with patch(
                 search_result
             )
 
+            reduced_content = reducer.reduce(
+                element,
+                page_content,
+                technology_profile,
+            )
+
             evidence = extractor.extract(
                 element,
                 technology_profile,
                 search_result,
-                page_content,
+                reduced_content,
             )
 
             if evidence:
