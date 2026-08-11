@@ -10,15 +10,17 @@ class PageContentReducer:
 
     def __init__(
         self,
-        window_size: int = 220,
         max_chars: int = 4500,
         max_passages: int = 8,
         max_passage_chars: int = 650,
     ):
-        self.window_size = window_size
         self.max_chars = max_chars
         self.max_passages = max_passages
         self.max_passage_chars = max_passage_chars
+
+    # ============================================================
+    # MAIN REDUCTION
+    # ============================================================
 
     def reduce(
         self,
@@ -28,6 +30,20 @@ class PageContentReducer:
     ) -> str:
 
         if not page_content:
+            return ""
+
+        normalized_content = self._normalize_content(
+            page_content
+        )
+
+        if not normalized_content:
+            return ""
+
+        sentences = self._split_sentences(
+            normalized_content
+        )
+
+        if not sentences:
             return ""
 
         phrases = self._extract_phrases(
@@ -43,103 +59,103 @@ class PageContentReducer:
         if not phrases and not terms:
             return ""
 
-        normalized_content = self._normalize_content(
-            page_content
+        scored_sentences = []
+
+        for index, sentence in enumerate(
+            sentences
+        ):
+
+            score = self._score_sentence(
+                sentence=sentence,
+                phrases=phrases,
+                terms=terms,
+            )
+
+            if score <= 0:
+                continue
+
+            scored_sentences.append(
+                (
+                    score,
+                    index,
+                    sentence,
+                )
+            )
+
+        if not scored_sentences:
+            return ""
+
+        # Highest scoring sentences first.
+        scored_sentences.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
         )
 
-        if not normalized_content:
-            return ""
+        candidate_passages = []
 
-        windows = []
+        for (
+            score,
+            index,
+            sentence,
+        ) in scored_sentences:
 
-        # --------------------------------------------------
-        # 1. Search exact multi-word technical phrases.
-        # --------------------------------------------------
-
-        for phrase in phrases:
-
-            for match in re.finditer(
-                re.escape(phrase),
-                normalized_content,
-            ):
-
-                start = max(
-                    0,
-                    match.start() - self.window_size,
+            passage_indexes = (
+                self._build_passage_indexes(
+                    index=index,
+                    sentences=sentences,
+                    phrases=phrases,
+                    terms=terms,
                 )
+            )
 
-                end = min(
-                    len(normalized_content),
-                    match.end() + self.window_size,
-                )
+            if not passage_indexes:
+                continue
 
-                window = normalized_content[start:end]
+            passage = " ".join(
+                sentences[position]
+                for position in passage_indexes
+            ).strip()
 
-                score = self._score_window(
-                    window,
+            if not passage:
+                continue
+
+            if len(passage) > self.max_passage_chars:
+
+                passage = self._trim_passage(
+                    passage,
                     phrases,
                     terms,
                 )
 
-                if score > 0:
+            passage = passage.strip()
 
-                    windows.append(
-                        (
-                            score,
-                            start,
-                            end,
-                            window,
-                        )
-                    )
+            if not passage:
+                continue
 
-        # --------------------------------------------------
-        # 2. Search individual technical terms.
-        # --------------------------------------------------
-
-        for term in terms:
-
-            for match in re.finditer(
-                rf"\b{re.escape(term)}\b",
-                normalized_content,
-            ):
-
-                start = max(
-                    0,
-                    match.start() - self.window_size,
+            passage_score = (
+                self._score_passage(
+                    passage=passage,
+                    phrases=phrases,
+                    terms=terms,
                 )
+            )
 
-                end = min(
-                    len(normalized_content),
-                    match.end() + self.window_size,
+            candidate_passages.append(
+                (
+                    passage_score,
+                    passage_indexes[0],
+                    passage_indexes[-1],
+                    passage,
                 )
+            )
 
-                window = normalized_content[start:end]
-
-                score = self._score_window(
-                    window,
-                    phrases,
-                    terms,
-                )
-
-                if score > 0:
-
-                    windows.append(
-                        (
-                            score,
-                            start,
-                            end,
-                            window,
-                        )
-                    )
-
-        if not windows:
+        if not candidate_passages:
             return ""
 
-        # --------------------------------------------------
-        # 3. Rank windows by technical relevance.
-        # --------------------------------------------------
-
-        windows.sort(
+        # Highest-value passages first.
+        candidate_passages.sort(
             key=lambda item: (
                 -item[0],
                 item[1],
@@ -152,78 +168,75 @@ class PageContentReducer:
 
         total_chars = 0
 
-        # --------------------------------------------------
-        # 4. Convert windows into concise passages.
-        #
-        # The reducer should not pass large arbitrary chunks
-        # to the evidence extractor.
-        # --------------------------------------------------
+        for (
+            score,
+            start_index,
+            end_index,
+            passage,
+        ) in candidate_passages:
 
-        for score, start, end, window in windows:
-
-            if len(selected_passages) >= self.max_passages:
+            if len(selected_passages) >= (
+                self.max_passages
+            ):
                 break
 
             if self._overlaps_selected_range(
-                start,
-                end,
+                start_index,
+                end_index,
                 selected_ranges,
             ):
                 continue
 
-            passage = self._trim_to_sentence_boundary(
-                window
+            separator_chars = (
+                2
+                if selected_passages
+                else 0
             )
-
-            passage = self._center_relevant_content(
-                passage,
-                phrases,
-                terms,
-            )
-
-            passage = passage.strip()
-
-            if not passage:
-                continue
-
-            if len(passage) > self.max_passage_chars:
-
-                passage = self._truncate_passage(
-                    passage,
-                    phrases,
-                    terms,
-                )
-
-            passage = passage.strip()
-
-            if not passage:
-                continue
 
             remaining_chars = (
                 self.max_chars
                 - total_chars
+                - separator_chars
             )
 
             if remaining_chars <= 0:
                 break
 
             if len(passage) > remaining_chars:
-                passage = passage[:remaining_chars].rstrip()
+
+                passage = self._trim_passage(
+                    passage,
+                    phrases,
+                    terms,
+                    max_chars=remaining_chars,
+                )
+
+            passage = passage.strip()
 
             if not passage:
-                break
+                continue
+
+            if len(passage) > remaining_chars:
+                continue
 
             selected_passages.append(
-                passage
+                (
+                    start_index,
+                    end_index,
+                    passage,
+                )
             )
-
-            total_chars += len(passage)
 
             selected_ranges.append(
                 (
-                    start,
-                    end,
+                    start_index,
+                    end_index,
                 )
+            )
+
+            total_chars += (
+                len(passage)
+                + separator_chars
             )
 
             if total_chars >= self.max_chars:
@@ -232,37 +245,15 @@ class PageContentReducer:
         if not selected_passages:
             return ""
 
-        # --------------------------------------------------
-        # 5. Restore document order.
-        #
-        # The selected passages are currently ranked by score.
-        # We sort using their original positions.
-        # --------------------------------------------------
-
-        passage_positions = []
-
-        for passage in selected_passages:
-
-            position = normalized_content.find(
-                passage
-            )
-
-            passage_positions.append(
-                (
-                    position if position >= 0 else len(
-                        normalized_content
-                    ),
-                    passage,
-                )
-            )
-
-        passage_positions.sort(
+        # Restore original document order.
+        selected_passages.sort(
             key=lambda item: item[0]
         )
 
         passages = [
             passage
-            for _, passage in passage_positions
+            for _, _, passage
+            in selected_passages
         ]
 
         return (
@@ -272,26 +263,91 @@ class PageContentReducer:
             .join(passages)
         )
 
-    # ========================================================
+    # ============================================================
     # CONTENT NORMALIZATION
-    # ========================================================
+    # ============================================================
 
     def _normalize_content(
         self,
         content: str,
     ) -> str:
 
+        # Preserve wording while removing excessive whitespace.
+        #
+        # We intentionally do NOT aggressively rewrite punctuation
+        # or sentence structure because downstream evidence
+        # extraction should retain source wording.
+        content = content.replace(
+            "\r\n",
+            "\n",
+        )
+
         content = re.sub(
-            r"\s+",
+            r"[ \t]+",
             " ",
+            content,
+        )
+
+        content = re.sub(
+            r"\n+",
+            "\n",
             content,
         )
 
         return content.strip()
 
-    # ========================================================
+    # ============================================================
+    # SENTENCE SEGMENTATION
+    # ============================================================
+
+    def _split_sentences(
+        self,
+        content: str,
+    ) -> list[str]:
+
+        if not content:
+            return []
+
+        # First split obvious paragraph/newline boundaries.
+        blocks = re.split(
+            r"\n+",
+            content,
+        )
+
+        sentences = []
+
+        for block in blocks:
+
+            block = block.strip()
+
+            if not block:
+                continue
+
+            # Split ordinary sentence boundaries.
+            #
+            # This deliberately remains simple and deterministic.
+            # We do not use an LLM or external NLP dependency.
+            parts = re.split(
+                r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])",
+                block,
+            )
+
+            for part in parts:
+
+                part = part.strip()
+
+                if not part:
+                    continue
+
+                sentences.append(
+                    part
+                )
+
+        return sentences
+
+    # ============================================================
     # PHRASE EXTRACTION
-    # ========================================================
+    # ============================================================
 
     def _extract_phrases(
         self,
@@ -339,10 +395,17 @@ class PageContentReducer:
 
             words = normalized.split()
 
-            # Prefer longer phrases because they carry
-            # more technical meaning.
+            # Generate phrases of 2-6 words.
+            #
+            # We intentionally avoid one-word phrases here.
+            # Individual terms are handled separately.
+            max_phrase_size = min(
+                6,
+                len(words),
+            )
+
             for size in range(
-                min(5, len(words)),
+                max_phrase_size,
                 1,
                 -1,
             ):
@@ -366,23 +429,33 @@ class PageContentReducer:
                     if not phrase:
                         continue
 
-                    if len(phrase) < 4:
+                    if len(phrase) < 5:
                         continue
 
-                    if phrase in self._stop_phrases():
+                    if (
+                        phrase
+                        in self._stop_phrases()
+                    ):
                         continue
 
                     if phrase not in phrases:
-
                         phrases.append(
                             phrase
                         )
 
+        # Longer phrases are more discriminative.
+        phrases.sort(
+            key=lambda phrase: (
+                -len(phrase.split()),
+                -len(phrase),
+            )
+        )
+
         return phrases
 
-    # ========================================================
+    # ============================================================
     # TERM EXTRACTION
-    # ========================================================
+    # ============================================================
 
     def _extract_terms(
         self,
@@ -426,7 +499,10 @@ class PageContentReducer:
 
             for word in words:
 
-                if word in self._stop_words():
+                if (
+                    word
+                    in self._stop_words()
+                ):
                     continue
 
                 if word not in terms:
@@ -436,48 +512,57 @@ class PageContentReducer:
 
         return terms
 
-    # ========================================================
-    # WINDOW SCORING
-    # ========================================================
+    # ============================================================
+    # SENTENCE SCORING
+    # ============================================================
 
-    def _score_window(
+    def _score_sentence(
         self,
-        window: str,
+        sentence: str,
         phrases: list[str],
         terms: list[str],
     ) -> int:
 
-        lower_window = window.lower()
+        lower_sentence = (
+            sentence.lower()
+        )
 
         score = 0
 
-        # --------------------------------------------------
-        # Exact technical phrases.
-        # --------------------------------------------------
+        matched_phrases = set()
+
+        # --------------------------------------------------------
+        # Exact multi-word technical phrases.
+        # --------------------------------------------------------
 
         for phrase in phrases:
 
-            if phrase in lower_window:
+            if phrase not in lower_sentence:
+                continue
 
-                word_count = len(
-                    phrase.split()
-                )
+            matched_phrases.add(
+                phrase
+            )
 
-                if word_count >= 4:
-                    score += 8
+            word_count = len(
+                phrase.split()
+            )
 
-                elif word_count == 3:
-                    score += 6
+            if word_count >= 5:
+                score += 12
 
-                elif word_count == 2:
-                    score += 4
+            elif word_count == 4:
+                score += 10
 
-                else:
-                    score += 2
+            elif word_count == 3:
+                score += 8
 
-        # --------------------------------------------------
+            else:
+                score += 5
+
+        # --------------------------------------------------------
         # Individual technical terms.
-        # --------------------------------------------------
+        # --------------------------------------------------------
 
         matched_terms = set()
 
@@ -485,62 +570,372 @@ class PageContentReducer:
 
             if re.search(
                 rf"\b{re.escape(term)}\b",
-                lower_window,
+                lower_sentence,
             ):
 
                 matched_terms.add(
                     term
                 )
 
+        # Individual terms matter, but substantially less than
+        # coherent phrases.
+        score += min(
+            len(matched_terms) * 2,
+            14,
+        )
+
+        # --------------------------------------------------------
+        # Technical density.
+        # --------------------------------------------------------
+
+        if len(matched_terms) >= 3:
+            score += 4
+
+        if len(matched_terms) >= 5:
+            score += 4
+
+        # --------------------------------------------------------
+        # Technical relationship language.
+        #
+        # These terms are especially valuable for EoU because
+        # they often indicate that the sentence describes an
+        # actual technical behavior rather than background.
+        # --------------------------------------------------------
+
+        relationship_terms = {
+            "configured to",
+            "adapted to",
+            "responsive to",
+            "in response to",
+            "based on",
+            "receives",
+            "receive",
+            "transmits",
+            "transmit",
+            "sends",
+            "send",
+            "routes",
+            "route",
+            "stores",
+            "store",
+            "writes",
+            "write",
+            "reads",
+            "read",
+            "controls",
+            "control",
+            "connects",
+            "connect",
+            "communicates",
+            "communication",
+            "determines",
+            "determine",
+            "generates",
+            "generate",
+            "processes",
+            "process",
+        }
+
+        relationship_matches = sum(
+            1
+            for term in relationship_terms
+            if term in lower_sentence
+        )
+
+        score += min(
+            relationship_matches * 3,
+            9,
+        )
+
+        # --------------------------------------------------------
+        # Penalize extremely generic sentences.
+        # --------------------------------------------------------
+
+        generic_phrases = {
+            "learn more",
+            "contact us",
+            "our products",
+            "our company",
+            "welcome to",
+            "privacy policy",
+            "terms of use",
+            "copyright",
+        }
+
+        if any(
+            phrase in lower_sentence
+            for phrase in generic_phrases
+        ):
+            score -= 10
+
+        return max(
+            score,
+            0,
+        )
+
+    # ============================================================
+    # PASSAGE SCORING
+    # ============================================================
+
+    def _score_passage(
+        self,
+        passage: str,
+        phrases: list[str],
+        terms: list[str],
+    ) -> int:
+
+        score = self._score_sentence(
+            passage,
+            phrases,
+            terms,
+        )
+
+        # Reward passages that contain multiple distinct
+        # technical terms.
+        lower_passage = (
+            passage.lower()
+        )
+
+        matched_terms = {
+            term
+            for term in terms
+            if re.search(
+                rf"\b{re.escape(term)}\b",
+                lower_passage,
+            )
+        }
+
         score += min(
             len(matched_terms),
             8,
         )
 
-        # --------------------------------------------------
-        # Reward technical density.
-        #
-        # A window containing several relevant terms is
-        # preferable to one containing a single isolated
-        # generic term.
-        # --------------------------------------------------
-
-        if len(matched_terms) >= 3:
-            score += 3
-
-        if len(matched_terms) >= 5:
-            score += 3
-
         return score
 
-    # ========================================================
-    # SENTENCE BOUNDARY HANDLING
-    # ========================================================
+    # ============================================================
+    # PASSAGE CONSTRUCTION
+    # ============================================================
 
-    def _trim_to_sentence_boundary(
+    def _build_passage_indexes(
         self,
-        text: str,
+        index: int,
+        sentences: list[str],
+        phrases: list[str],
+        terms: list[str],
+    ) -> list[int]:
+
+        if index < 0:
+            return []
+
+        if index >= len(sentences):
+            return []
+
+        indexes = [
+            index
+        ]
+
+        current_length = len(
+            sentences[index]
+        )
+
+        # --------------------------------------------------------
+        # Add one neighboring sentence when it provides technical
+        # context or a relationship.
+        #
+        # We prefer the following sentence because many technical
+        # pages introduce a component and then describe its
+        # operation in the next sentence.
+        # --------------------------------------------------------
+
+        neighbors = []
+
+        if index + 1 < len(sentences):
+            neighbors.append(
+                index + 1
+            )
+
+        if index - 1 >= 0:
+            neighbors.append(
+                index - 1
+            )
+
+        best_neighbor = None
+        best_neighbor_score = 0
+
+        for neighbor_index in neighbors:
+
+            neighbor = sentences[
+                neighbor_index
+            ]
+
+            neighbor_score = self._score_sentence(
+                sentence=neighbor,
+                phrases=phrases,
+                terms=terms,
+            )
+
+            # Also reward explicit relational language.
+            lower_neighbor = (
+                neighbor.lower()
+            )
+
+            if any(
+                relationship in lower_neighbor
+                for relationship in (
+                    "based on",
+                    "in response to",
+                    "configured to",
+                    "responsive to",
+                    "from",
+                    "to",
+                    "through",
+                    "using",
+                )
+            ):
+                neighbor_score += 3
+
+            if (
+                neighbor_score
+                > best_neighbor_score
+            ):
+                best_neighbor_score = (
+                    neighbor_score
+                )
+                best_neighbor = (
+                    neighbor_index
+                )
+
+        # Add neighboring sentence only when it actually helps.
+        if (
+            best_neighbor is not None
+            and best_neighbor_score >= 4
+        ):
+
+            proposed_length = (
+                current_length
+                + 1
+                + len(
+                    sentences[
+                        best_neighbor
+                    ]
+                )
+            )
+
+            if (
+                proposed_length
+                <= self.max_passage_chars
+            ):
+                indexes.append(
+                    best_neighbor
+                )
+
+        # --------------------------------------------------------
+        # Occasionally a third sentence is needed to preserve a
+        # technical relationship.
+        # --------------------------------------------------------
+
+        if len(indexes) == 2:
+
+            surrounding = []
+
+            for candidate in (
+                index - 1,
+                index + 1,
+                index - 2,
+                index + 2,
+            ):
+
+                if (
+                    candidate < 0
+                    or candidate >= len(sentences)
+                    or candidate in indexes
+                ):
+                    continue
+
+                candidate_score = (
+                    self._score_sentence(
+                        sentences[candidate],
+                        phrases,
+                        terms,
+                    )
+                )
+
+                if candidate_score >= 6:
+                    surrounding.append(
+                        (
+                            candidate_score,
+                            candidate,
+                        )
+                    )
+
+            if surrounding:
+
+                surrounding.sort(
+                    reverse=True
+                )
+
+                candidate = (
+                    surrounding[0][1]
+                )
+
+                proposed_indexes = (
+                    indexes + [candidate]
+                )
+
+                proposed_indexes.sort()
+
+                proposed_length = sum(
+                    len(
+                        sentences[
+                            position
+                        ]
+                    )
+                    for position
+                    in proposed_indexes
+                ) + (
+                    len(proposed_indexes)
+                    - 1
+                )
+
+                if (
+                    proposed_length
+                    <= self.max_passage_chars
+                ):
+                    indexes = (
+                        proposed_indexes
+                    )
+
+        indexes.sort()
+
+        return indexes
+
+    # ============================================================
+    # PASSAGE TRIMMING
+    # ============================================================
+
+    def _trim_passage(
+        self,
+        passage: str,
+        phrases: list[str],
+        terms: list[str],
+        max_chars: int | None = None,
     ) -> str:
 
-        text = text.strip()
+        limit = (
+            max_chars
+            if max_chars is not None
+            else self.max_passage_chars
+        )
 
-        if not text:
-            return ""
+        if len(passage) <= limit:
+            return passage
 
-        if len(text) <= self.max_passage_chars:
-            return text
-
-        # --------------------------------------------------
-        # Prefer complete sentences.
-        # --------------------------------------------------
-
-        sentences = re.split(
-            r"(?<=[.!?])\s+",
-            text,
+        sentences = self._split_sentences(
+            passage
         )
 
         if not sentences:
-            return text
+            return passage[:limit].rstrip()
 
         selected = []
 
@@ -553,9 +948,16 @@ class PageContentReducer:
             if not sentence:
                 continue
 
+            additional = len(
+                sentence
+            )
+
+            if selected:
+                additional += 1
+
             if (
-                total + len(sentence) + 1
-                > self.max_passage_chars
+                total + additional
+                > limit
             ):
                 break
 
@@ -563,123 +965,32 @@ class PageContentReducer:
                 sentence
             )
 
-            total += (
-                len(sentence) + 1
-            )
+            total += additional
 
         if selected:
             return " ".join(
                 selected
-            )
+            ).strip()
 
-        return text
-
-    # ========================================================
-    # CENTER RELEVANT CONTENT
-    # ========================================================
-
-    def _center_relevant_content(
-        self,
-        passage: str,
-        phrases: list[str],
-        terms: list[str],
-    ) -> str:
-
-        if len(passage) <= self.max_passage_chars:
-            return passage
-
-        lower_passage = passage.lower()
-
-        best_position = None
-
-        best_score = -1
-
-        # Prefer a longer exact phrase as the center.
-        for phrase in phrases:
-
-            position = lower_passage.find(
-                phrase
-            )
-
-            if position < 0:
-                continue
-
-            phrase_score = len(
-                phrase.split()
-            )
-
-            if phrase_score > best_score:
-
-                best_score = phrase_score
-                best_position = position
-
-        # Fall back to the densest technical term.
-        if best_position is None:
-
-            for term in terms:
-
-                position = lower_passage.find(
-                    term
-                )
-
-                if position < 0:
-                    continue
-
-                best_position = position
-                break
-
-        if best_position is None:
-            return passage
-
-        half_window = (
-            self.max_passage_chars // 2
-        )
-
-        start = max(
-            0,
-            best_position - half_window,
-        )
-
-        end = min(
-            len(passage),
-            start + self.max_passage_chars,
-        )
-
-        return passage[start:end]
-
-    # ========================================================
-    # PASSAGE TRUNCATION
-    # ========================================================
-
-    def _truncate_passage(
-        self,
-        passage: str,
-        phrases: list[str],
-        terms: list[str],
-    ) -> str:
-
-        passage = self._center_relevant_content(
-            passage,
-            phrases,
-            terms,
-        )
-
-        if len(passage) <= self.max_passage_chars:
-            return passage
-
+        # Last-resort truncation.
+        #
+        # This should be rare because passages are constructed
+        # from sentence boundaries.
         return passage[
-            :self.max_passage_chars
+            :limit
         ].rstrip()
 
-    # ========================================================
+    # ============================================================
     # OVERLAP CHECKING
-    # ========================================================
+    # ============================================================
 
     def _overlaps_selected_range(
         self,
         start: int,
         end: int,
-        selected_ranges: list[tuple[int, int]],
+        selected_ranges: list[
+            tuple[int, int]
+        ],
     ) -> bool:
 
         for (
@@ -688,19 +999,20 @@ class PageContentReducer:
         ) in selected_ranges:
 
             if (
-                start < selected_end
-                and end > selected_start
+                start <= selected_end
+                and end >= selected_start
             ):
-
                 return True
 
         return False
 
-    # ========================================================
+    # ============================================================
     # STOP WORDS
-    # ========================================================
+    # ============================================================
 
-    def _stop_words(self) -> set[str]:
+    def _stop_words(
+        self,
+    ) -> set[str]:
 
         return {
             "the",
@@ -727,18 +1039,43 @@ class PageContentReducer:
             "method",
             "system",
             "device",
-            "configured",
             "using",
             "based",
             "response",
             "within",
+            "through",
+            "such",
+            "each",
+            "other",
+            "one",
+            "more",
+            "than",
+            "onto",
+            "upon",
+            "where",
+            "which",
+            "whose",
+            "their",
+            "there",
+            "then",
+            "when",
+            "being",
+            "also",
+            "may",
+            "can",
+            "include",
+            "including",
+            "comprises",
+            "comprise",
         }
 
-    # ========================================================
+    # ============================================================
     # STOP PHRASES
-    # ========================================================
+    # ============================================================
 
-    def _stop_phrases(self) -> set[str]:
+    def _stop_phrases(
+        self,
+    ) -> set[str]:
 
         return {
             "the",
@@ -751,7 +1088,12 @@ class PageContentReducer:
             "the device",
             "the system",
             "the method",
+            "the component",
             "claim element",
             "a system",
             "a device",
+            "a method",
+            "configured to",
+            "in response",
+            "based on",
         }
