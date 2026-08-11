@@ -12,7 +12,7 @@ class PageContentReducer:
         self,
         max_chars: int = 5000,
         max_passages: int = 10,
-        max_passage_chars: int = 500,
+        max_passage_chars: int = 700,
     ):
         self.max_chars = max_chars
         self.max_passages = max_passages
@@ -59,7 +59,11 @@ class PageContentReducer:
         if not phrases and not terms:
             return ""
 
-        scored_sentences = []
+        # --------------------------------------------------------
+        # Score every sentence.
+        # --------------------------------------------------------
+
+        sentence_scores = []
 
         for index, sentence in enumerate(
             sentences
@@ -71,10 +75,7 @@ class PageContentReducer:
                 terms=terms,
             )
 
-            if score <= 0:
-                continue
-
-            scored_sentences.append(
+            sentence_scores.append(
                 (
                     score,
                     index,
@@ -82,11 +83,26 @@ class PageContentReducer:
                 )
             )
 
-        if not scored_sentences:
+        # --------------------------------------------------------
+        # Candidate anchors.
+        #
+        # We still need at least one technically relevant sentence
+        # to anchor a passage, but we no longer require every
+        # sentence in the final passage to independently match
+        # claim terminology.
+        # --------------------------------------------------------
+
+        anchor_sentences = [
+            item
+            for item in sentence_scores
+            if item[0] >= 4
+        ]
+
+        if not anchor_sentences:
             return ""
 
-        # Highest scoring sentences first.
-        scored_sentences.sort(
+        # Highest-value anchors first.
+        anchor_sentences.sort(
             key=lambda item: (
                 -item[0],
                 item[1],
@@ -99,12 +115,13 @@ class PageContentReducer:
             score,
             index,
             sentence,
-        ) in scored_sentences:
+        ) in anchor_sentences:
 
             passage_indexes = (
                 self._build_passage_indexes(
                     index=index,
                     sentences=sentences,
+                    sentence_scores=sentence_scores,
                     phrases=phrases,
                     terms=terms,
                 )
@@ -122,6 +139,7 @@ class PageContentReducer:
                 continue
 
             if len(passage) > self.max_passage_chars:
+
                 passage = self._trim_passage(
                     passage=passage,
                     phrases=phrases,
@@ -152,7 +170,10 @@ class PageContentReducer:
         if not candidate_passages:
             return ""
 
+        # --------------------------------------------------------
         # Highest-value passages first.
+        # --------------------------------------------------------
+
         candidate_passages.sort(
             key=lambda item: (
                 -item[0],
@@ -242,7 +263,10 @@ class PageContentReducer:
         if not selected_passages:
             return ""
 
+        # --------------------------------------------------------
         # Restore original document order.
+        # --------------------------------------------------------
+
         selected_passages.sort(
             key=lambda item: item[0]
         )
@@ -320,9 +344,9 @@ class PageContentReducer:
             if not block:
                 continue
 
-            # Split ordinary sentence boundaries.
-            #
-            # This remains deterministic and dependency-free.
+            # ----------------------------------------------------
+            # Preserve reasonably sized technical sentences.
+            # ----------------------------------------------------
 
             parts = re.split(
                 r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])",
@@ -393,7 +417,7 @@ class PageContentReducer:
             words = normalized.split()
 
             max_phrase_size = min(
-                6,
+                5,
                 len(words),
             )
 
@@ -432,6 +456,7 @@ class PageContentReducer:
                         continue
 
                     if phrase not in phrases:
+
                         phrases.append(
                             phrase
                         )
@@ -499,6 +524,7 @@ class PageContentReducer:
                     continue
 
                 if word not in terms:
+
                     terms.append(
                         word
                     )
@@ -526,26 +552,32 @@ class PageContentReducer:
         # Exact multi-word technical phrases.
         # --------------------------------------------------------
 
+        matched_phrases = set()
+
         for phrase in phrases:
 
             if phrase not in lower_sentence:
                 continue
+
+            matched_phrases.add(
+                phrase
+            )
 
             word_count = len(
                 phrase.split()
             )
 
             if word_count >= 5:
-                score += 12
-
-            elif word_count == 4:
                 score += 10
 
-            elif word_count == 3:
+            elif word_count == 4:
                 score += 8
 
+            elif word_count == 3:
+                score += 6
+
             else:
-                score += 5
+                score += 3
 
         # --------------------------------------------------------
         # Individual technical terms.
@@ -566,7 +598,7 @@ class PageContentReducer:
 
         score += min(
             len(matched_terms) * 2,
-            14,
+            16,
         )
 
         # --------------------------------------------------------
@@ -574,17 +606,17 @@ class PageContentReducer:
         # --------------------------------------------------------
 
         if len(matched_terms) >= 3:
-            score += 4
+            score += 3
 
         if len(matched_terms) >= 5:
-            score += 4
+            score += 3
 
         # --------------------------------------------------------
         # Technical relationship language.
         #
-        # These are deliberately weighted because a sentence
-        # describing an actual operation or relationship is more
-        # useful than one merely mentioning a component.
+        # This is particularly important for claims where the
+        # invention lies in the relationship between components,
+        # rather than in the components themselves.
         # --------------------------------------------------------
 
         relationship_terms = {
@@ -593,62 +625,97 @@ class PageContentReducer:
             "responsive to",
             "in response to",
             "based on",
+            "based upon",
             "receives",
             "receive",
-            "transmits",
-            "transmit",
+            "received",
+            "receiving",
+            "from",
+            "through",
+            "entering",
+            "enters",
+            "enter",
+            "originating",
+            "originates",
             "sends",
             "send",
+            "sending",
+            "transmits",
+            "transmit",
+            "transmitting",
             "routes",
             "route",
+            "routing",
+            "routed",
             "stores",
             "store",
+            "storing",
             "writes",
             "write",
+            "writing",
             "reads",
             "read",
+            "reading",
             "controls",
             "control",
+            "controlling",
             "connects",
             "connect",
+            "connecting",
             "communicates",
+            "communicate",
             "communication",
             "determines",
             "determine",
+            "determining",
             "identifies",
             "identify",
+            "identifying",
             "selects",
             "select",
+            "selecting",
             "generates",
             "generate",
+            "generating",
             "processes",
             "process",
+            "processing",
             "classifies",
             "classify",
+            "classifying",
             "redirects",
             "redirect",
+            "redirecting",
             "forwards",
             "forward",
+            "forwarding",
             "steers",
             "steer",
+            "steering",
+            "handles",
+            "handle",
+            "handling",
+            "satisfies",
+            "satisfy",
+            "satisfying",
         }
 
         relationship_matches = sum(
             1
             for term in relationship_terms
-            if term in lower_sentence
+            if re.search(
+                rf"\b{re.escape(term)}\b",
+                lower_sentence,
+            )
         )
 
         score += min(
             relationship_matches * 4,
-            12,
+            16,
         )
 
         # --------------------------------------------------------
         # Conditional / causal language.
-        #
-        # Especially valuable for claims containing relationships
-        # such as "in response to", "based on", "when", etc.
         # --------------------------------------------------------
 
         conditional_terms = {
@@ -656,10 +723,15 @@ class PageContentReducer:
             "when",
             "in response",
             "based on",
+            "based upon",
             "according to",
             "depending on",
             "upon determining",
             "after determining",
+            "once",
+            "whenever",
+            "provided that",
+            "in response to determining",
         }
 
         conditional_matches = sum(
@@ -669,12 +741,65 @@ class PageContentReducer:
         )
 
         score += min(
-            conditional_matches * 4,
-            8,
+            conditional_matches * 5,
+            10,
         )
 
         # --------------------------------------------------------
-        # Penalize extremely generic sentences.
+        # Structural / architectural language.
+        #
+        # Useful for sources that explain how components interact
+        # without using the same terminology as the claim.
+        # --------------------------------------------------------
+
+        architecture_terms = {
+            "controller",
+            "control plane",
+            "data plane",
+            "edge",
+            "network",
+            "traffic",
+            "packet",
+            "flow",
+            "ingress",
+            "egress",
+            "gateway",
+            "node",
+            "system",
+            "service",
+            "interface",
+            "request",
+            "response",
+            "information",
+            "data",
+            "criteria",
+            "rule",
+            "policy",
+            "classification",
+            "classifier",
+            "decision",
+            "destination",
+            "source",
+        }
+
+        architecture_matches = sum(
+            1
+            for term in architecture_terms
+            if re.search(
+                rf"\b{re.escape(term)}\b",
+                lower_sentence,
+            )
+        )
+
+        # Architecture terms are useful, but should not dominate
+        # genuine claim-term or relationship matches.
+        score += min(
+            architecture_matches,
+            6,
+        )
+
+        # --------------------------------------------------------
+        # Penalize extremely generic page material.
         # --------------------------------------------------------
 
         generic_phrases = {
@@ -686,13 +811,16 @@ class PageContentReducer:
             "privacy policy",
             "terms of use",
             "copyright",
+            "sign up",
+            "all rights reserved",
         }
 
         if any(
             phrase in lower_sentence
             for phrase in generic_phrases
         ):
-            score -= 10
+
+            score -= 12
 
         return max(
             score,
@@ -710,10 +838,25 @@ class PageContentReducer:
         terms: list[str],
     ) -> int:
 
-        score = self._score_sentence(
-            passage,
-            phrases,
-            terms,
+        sentences = self._split_sentences(
+            passage
+        )
+
+        if not sentences:
+            return 0
+
+        # Score each sentence independently first.
+        sentence_scores = [
+            self._score_sentence(
+                sentence,
+                phrases,
+                terms,
+            )
+            for sentence in sentences
+        ]
+
+        score = sum(
+            sentence_scores
         )
 
         lower_passage = (
@@ -734,6 +877,81 @@ class PageContentReducer:
             8,
         )
 
+        # --------------------------------------------------------
+        # Reward passages that contain both technical terminology
+        # and relationship language.
+        # --------------------------------------------------------
+
+        relationship_markers = (
+            "based on",
+            "in response",
+            "receiving",
+            "received from",
+            "through",
+            "entering",
+            "routing",
+            "routes",
+            "determining",
+            "identifying",
+            "satisfies",
+            "redirecting",
+            "forwarding",
+            "selecting",
+        )
+
+        relationship_count = sum(
+            1
+            for marker in relationship_markers
+            if marker in lower_passage
+        )
+
+        if (
+            relationship_count >= 1
+            and len(matched_terms) >= 2
+        ):
+            score += 6
+
+        if (
+            relationship_count >= 2
+            and len(matched_terms) >= 3
+        ):
+            score += 6
+
+        # --------------------------------------------------------
+        # Reward multi-sentence technical chains.
+        #
+        # This is the key change from the previous reducer.
+        # A sequence such as:
+        #
+        #   receives traffic
+        #       ↓
+        #   determines criteria
+        #       ↓
+        #   routes traffic
+        #
+        # can now survive as one candidate passage.
+        # --------------------------------------------------------
+
+        if len(sentences) >= 2:
+
+            if any(
+                value >= 5
+                for value in sentence_scores
+            ):
+
+                score += 3
+
+        if len(sentences) >= 3:
+
+            high_value_sentences = sum(
+                1
+                for value in sentence_scores
+                if value >= 5
+            )
+
+            if high_value_sentences >= 2:
+                score += 5
+
         return score
 
     # ============================================================
@@ -744,6 +962,9 @@ class PageContentReducer:
         self,
         index: int,
         sentences: list[str],
+        sentence_scores: list[
+            tuple[int, int, str]
+        ],
         phrases: list[str],
         terms: list[str],
     ) -> list[int]:
@@ -754,124 +975,172 @@ class PageContentReducer:
         if index >= len(sentences):
             return []
 
+        # --------------------------------------------------------
+        # Start with the anchor sentence.
+        # --------------------------------------------------------
+
         indexes = [
             index
         ]
 
-        current_length = len(
-            sentences[index]
+        # --------------------------------------------------------
+        # Consider up to TWO neighboring sentences on each side.
+        #
+        # We don't automatically include all of them. We choose
+        # the strongest compact window.
+        # --------------------------------------------------------
+
+        candidate_windows = []
+
+        # 1 sentence
+        candidate_windows.append(
+            [index]
         )
 
-        # --------------------------------------------------------
-        # Add ONE neighboring sentence when it provides meaningful
-        # technical context or completes a relationship.
-        # --------------------------------------------------------
-
-        neighbors = []
-
+        # Anchor + next
         if index + 1 < len(sentences):
-            neighbors.append(
-                index + 1
+
+            candidate_windows.append(
+                [
+                    index,
+                    index + 1,
+                ]
             )
 
+        # Previous + anchor
         if index - 1 >= 0:
-            neighbors.append(
-                index - 1
+
+            candidate_windows.append(
+                [
+                    index - 1,
+                    index,
+                ]
             )
 
-        best_neighbor = None
-        best_neighbor_score = 0
-
-        for neighbor_index in neighbors:
-
-            neighbor = sentences[
-                neighbor_index
-            ]
-
-            neighbor_score = self._score_sentence(
-                sentence=neighbor,
-                phrases=phrases,
-                terms=terms,
-            )
-
-            lower_neighbor = (
-                neighbor.lower()
-            )
-
-            # Strongly prefer explicit technical relationships.
-            if any(
-                relationship in lower_neighbor
-                for relationship in (
-                    "based on",
-                    "in response to",
-                    "configured to",
-                    "responsive to",
-                    "determines",
-                    "identifies",
-                    "selects",
-                    "routes",
-                    "forwards",
-                    "redirects",
-                    "steers",
-                    "using",
-                )
-            ):
-                neighbor_score += 5
-
-            if (
-                neighbor_score
-                > best_neighbor_score
-            ):
-                best_neighbor_score = (
-                    neighbor_score
-                )
-                best_neighbor = (
-                    neighbor_index
-                )
-
-        # Only add a neighbor when it provides meaningful
-        # technical value.
+        # Previous + anchor + next
         if (
-            best_neighbor is not None
-            and best_neighbor_score >= 7
+            index - 1 >= 0
+            and index + 1 < len(sentences)
         ):
 
-            proposed_length = (
-                current_length
-                + 1
-                + len(
-                    sentences[
-                        best_neighbor
-                    ]
-                )
+            candidate_windows.append(
+                [
+                    index - 1,
+                    index,
+                    index + 1,
+                ]
             )
 
-            if (
-                proposed_length
-                <= self.max_passage_chars
-            ):
+        # Previous two + anchor
+        if index - 2 >= 0:
 
-                indexes.append(
-                    best_neighbor
+            candidate_windows.append(
+                [
+                    index - 2,
+                    index - 1,
+                    index,
+                ]
+            )
+
+        # Anchor + next two
+        if index + 2 < len(sentences):
+
+            candidate_windows.append(
+                [
+                    index,
+                    index + 1,
+                    index + 2,
+                ]
+            )
+
+        # --------------------------------------------------------
+        # Evaluate candidate windows.
+        # --------------------------------------------------------
+
+        best_window = [index]
+        best_score = self._score_passage(
+            sentences[index],
+            phrases,
+            terms,
+        )
+
+        for window in candidate_windows:
+
+            passage = " ".join(
+                sentences[position]
+                for position in window
+            ).strip()
+
+            if not passage:
+                continue
+
+            if len(passage) > self.max_passage_chars:
+                continue
+
+            window_score = self._score_passage(
+                passage,
+                phrases,
+                terms,
+            )
+
+            # ----------------------------------------------------
+            # Context bridge bonus.
+            #
+            # If a neighboring sentence contains few direct
+            # keywords but connects two technically strong
+            # sentences, keeping it can be valuable.
+            # ----------------------------------------------------
+
+            if len(window) == 3:
+
+                middle_index = window[1]
+
+                middle_score = self._score_sentence(
+                    sentences[middle_index],
+                    phrases,
+                    terms,
                 )
 
-        # --------------------------------------------------------
-        # IMPORTANT:
-        #
-        # Do NOT automatically add a third sentence.
-        #
-        # The previous reducer occasionally expanded passages to
-        # three sentences based on surrounding scores. That can
-        # turn a useful evidence-bearing sentence into a large
-        # paragraph.
-        #
-        # We still allow 2-sentence passages when context genuinely
-        # helps, while keeping the normal evidence unit compact.
-        # --------------------------------------------------------
+                outer_scores = [
+                    self._score_sentence(
+                        sentences[window[0]],
+                        phrases,
+                        terms,
+                    ),
+                    self._score_sentence(
+                        sentences[window[2]],
+                        phrases,
+                        terms,
+                    ),
+                ]
 
-        indexes.sort()
+                if (
+                    middle_score < 5
+                    and all(
+                        value >= 5
+                        for value in outer_scores
+                    )
+                ):
 
-        return indexes
+                    window_score += 8
+
+            # Prefer a longer window when it adds meaningful
+            # technical context, but don't reward length by itself.
+            if (
+                window_score > best_score
+                or (
+                    window_score == best_score
+                    and len(window)
+                    > len(best_window)
+                )
+            ):
+
+                best_window = window
+                best_score = window_score
+
+        return sorted(
+            set(best_window)
+        )
 
     # ============================================================
     # PASSAGE TRIMMING
@@ -903,11 +1172,9 @@ class PageContentReducer:
                 :limit
             ].rstrip()
 
+        # --------------------------------------------------------
         # Prefer complete sentences.
-        #
-        # Never intentionally cut an evidence-bearing sentence
-        # in the middle when a shorter complete sentence is
-        # available.
+        # --------------------------------------------------------
 
         selected = []
         total = 0
@@ -939,11 +1206,18 @@ class PageContentReducer:
             total += additional
 
         if selected:
+
             return " ".join(
                 selected
             ).strip()
 
-        # Last resort for a single extremely long sentence.
+        # --------------------------------------------------------
+        # Last resort for one extremely long sentence.
+        #
+        # This is unavoidable if the source itself has a sentence
+        # longer than the configured passage limit.
+        # --------------------------------------------------------
+
         return passage[
             :limit
         ].rstrip()
@@ -970,6 +1244,7 @@ class PageContentReducer:
                 start <= selected_end
                 and end >= selected_start
             ):
+
                 return True
 
         return False
