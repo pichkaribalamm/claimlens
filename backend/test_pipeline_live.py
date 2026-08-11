@@ -96,17 +96,23 @@ def mock_gemini_generate(prompt, response_schema):
 
     if schema_name == "EvidenceExtractionBatchResult":
 
-        source_indexes = [
-            int(index)
-            for index in re.findall(
-                r"SOURCE INDEX:\s*(\d+)",
-                prompt,
-            )
-        ]
+        source_pattern = re.compile(
+            r"SOURCE INDEX:\s*(\d+)\s*"
+            r"TITLE:\s*(.*?)\s*"
+            r"URL:\s*(.*?)\s*"
+            r"RELEVANT PAGE CONTENT:",
+            re.DOTALL,
+        )
+
+        sources = source_pattern.findall(prompt)
 
         results = []
 
-        for index in source_indexes:
+        for index, title, url in sources:
+
+            index = int(index)
+            title = title.strip()
+            url = url.strip()
 
             results.append(
                 {
@@ -114,21 +120,17 @@ def mock_gemini_generate(prompt, response_schema):
                     "evidence": [
                         {
                             "claim_element_id": "1.1",
-                            "source_title": "Samsung Galaxy S26 Ultra",
-                            "url": (
-                                "https://www.samsung.com/in/"
-                                "smartphones/galaxy-s26-ultra/"
-                            ),
+                            "source_title": title,
+                            "url": url,
                             "excerpt": (
-                                "Galaxy S26 Ultra's front camera "
-                                "now features an AI image signal "
-                                "processor (ISP)"
+                                "The processor receives image data "
+                                "from the camera system."
                             ),
                             "evidence_type": "direct",
                             "relevance": (
-                                "The source explicitly identifies "
-                                "an image signal processor associated "
-                                "with the camera."
+                                "The source explicitly describes "
+                                "a processor receiving image data "
+                                "from the camera system."
                             ),
                         }
                     ],
@@ -161,10 +163,10 @@ def mock_gemini_generate(prompt, response_schema):
                     "evidence_supported": False,
                     "confidence": 0.90,
                     "reasoning": (
-                        "The available excerpt identifies an image "
-                        "signal processor associated with the camera, "
-                        "but it does not explicitly establish that "
-                        "the processor is configured to receive image data."
+                        "The available excerpt identifies a processor "
+                        "receiving image data, but the excerpt does "
+                        "not establish all limitations necessary to "
+                        "support the complete claim element."
                     ),
                 }
             )
