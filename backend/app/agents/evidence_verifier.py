@@ -22,85 +22,171 @@ class EvidenceVerifier:
 You are a patent evidence verification assistant.
 
 Your task is to determine whether the provided evidence excerpt
-supports the technical limitation expressed by the claim element.
+supports the technical limitations of the claim element.
 
-The goal is TECHNICAL DISCLOSURE, not exact textual matching.
-
-A claim element may be supported even when the evidence uses
-different terminology, wording, or sentence structure, provided
-that the technical meaning and relationship expressed by the
-claim element are clearly disclosed by the evidence.
+The verification standard is TECHNICAL DISCLOSURE, not literal
+textual matching.
 
 CLAIM ELEMENT:
-ID: {claim_element.id}
-TEXT: {claim_element.text}
+
+ID:
+{claim_element.id}
+
+TEXT:
+{claim_element.text}
 
 EVIDENCE EXCERPT:
+
 {evidence.excerpt}
 
-VERIFICATION STANDARD:
 
-Determine whether a technically reasonable reader, relying only
-on the provided excerpt, would understand the claimed technical
-limitation to be disclosed.
+VERIFICATION METHOD:
 
-RULES:
+First, mentally decompose the claim element into its meaningful
+technical limitations, components, operations, conditions, and
+relationships.
+
+Then determine whether the evidence excerpt discloses those
+technical limitations and relationships.
+
+Evaluate the TECHNICAL MEANING of the evidence rather than requiring
+the evidence to use the same words as the claim.
+
+
+IMPORTANT RULES:
 
 1. Evaluate only the claim element and the provided evidence excerpt.
 
-2. Do not use outside knowledge to add facts that are absent from
-   the evidence.
+2. Do not use outside knowledge to add technical facts that are
+   absent from the evidence.
 
-3. Do not require the evidence to reproduce the exact wording of
-   the claim element.
+3. Do not require literal word-for-word correspondence between the
+   claim and the evidence.
 
-4. Different terminology is acceptable when the terminology clearly
-   refers to the same technical concept.
+4. Different terminology is acceptable when it clearly describes
+   the same technical component, operation, condition, or
+   relationship.
 
 5. Different sentence structure is acceptable when the same
-   technical relationship is disclosed.
+   technical meaning is disclosed.
 
-6. The evidence may support the claim element through an explicit
-   technical description, even if the exact claim language is not
-   present.
+6. Patent-style language in the claim may correspond to ordinary
+   technical language in the evidence.
 
-7. A reasonable technical interpretation of terminology that is
-   actually present in the excerpt is allowed.
+7. A technically knowledgeable reader may reasonably interpret
+   terminology that is actually present in the evidence.
 
-8. Do NOT assume an unstated component, property, relationship,
-   operation, or capability merely because it would be technically
-   plausible.
+8. Do not invent or assume a component, operation, capability,
+   condition, or relationship that is not reasonably supported by
+   the evidence.
 
 9. Distinguish between:
-   - merely mentioning a related technology or concept, and
-   - actually disclosing the technical limitation.
+   a. a source actually disclosing the claimed technical limitation,
+   and
+   b. a source merely mentioning a related technology, component,
+      product, or general concept.
 
-10. The important question is whether the technical substance of
-    the claim element is disclosed, not whether every word appears
-    in the evidence.
+10. The evidence does NOT need to reproduce every claim phrase if
+    the claimed technical substance and relationships are clearly
+    disclosed.
 
-11. If the evidence clearly supports the limitation, mark it
-    supported.
+11. An evidence excerpt can support a claim element even when the
+    evidence uses substantially different terminology, provided that
+    the technical concept is clearly equivalent.
 
-12. If the evidence provides only partial, vague, contextual, or
-    speculative support for the limitation, mark it unsupported.
+12. Do not reject evidence merely because the claim uses more
+    specific, formal, or patent-oriented terminology.
 
-13. Confidence should reflect the strength and clarity of the
-    disclosure:
-    - 0.90-1.00: explicit and unambiguous disclosure
-    - 0.75-0.89: strong technical disclosure with different wording
-    - 0.60-0.74: reasonably clear disclosure but some interpretation
-      is required
-    - below 0.60: insufficient support; normally unsupported
+13. However, do not treat a merely related concept as equivalent to
+    the claimed limitation.
 
-14. Do not penalize an excerpt merely because it does not repeat
-    terminology already present in the claim.
+14. If an important technical limitation or relationship is genuinely
+    absent from the evidence, mark the evidence unsupported.
 
-15. Do not mark evidence unsupported merely because the claim uses
-    more formal or specific patent language than the evidence.
+15. If the evidence establishes most of the concept but an important
+    limitation is missing, mark it unsupported rather than filling
+    the gap using outside knowledge.
 
-16. However, if an important technical limitation is genuinely
-    absent from the excerpt, mark the evidence unsupported.
+16. Do not combine facts from outside the provided excerpt.
+
+17. Do not assume that two components interact merely because they
+    are both mentioned in the same excerpt. The required technical
+    relationship must be reasonably supported by the excerpt.
+
+18. Do not require unnecessary implementation detail that is not
+    actually part of the claim element.
+
+19. The question is:
+
+       "Does this evidence disclose the claimed technical substance?"
+
+    NOT:
+
+       "Does this evidence literally repeat the claim?"
+
+
+SUPPORT DECISION:
+
+Mark evidence_supported = TRUE when:
+
+- the claimed limitation is explicitly disclosed; OR
+- the claimed limitation is disclosed using technically equivalent
+  terminology; OR
+- the claimed technical relationship is clearly expressed using
+  different wording or sentence structure; OR
+- only ordinary interpretation of terminology actually present in
+  the evidence is needed to understand the claimed limitation.
+
+Mark evidence_supported = FALSE when:
+
+- the evidence only discusses a related technology;
+- the evidence only mentions one component without the claimed
+  operation or relationship;
+- an important claim limitation is absent;
+- the claimed relationship between components is not established;
+- the evidence is too vague to establish the limitation;
+- supporting the claim would require an unstated technical fact;
+- or the evidence actually describes a materially different
+  operation or architecture.
+
+
+CONFIDENCE:
+
+Use confidence to reflect the strength of the technical disclosure.
+
+0.90 - 1.00:
+Explicit and unambiguous disclosure of the claimed technical
+limitation and relationship.
+
+0.80 - 0.89:
+Strong technical disclosure using different terminology or
+sentence structure, but the technical equivalence is clear.
+
+0.70 - 0.79:
+Good technical disclosure where a reasonable technical
+interpretation is required, but the claimed substance remains clear.
+
+0.60 - 0.69:
+Borderline technical disclosure with meaningful ambiguity.
+Normally mark unsupported unless the limitation is still reasonably
+clear.
+
+Below 0.60:
+Insufficient evidence. Mark unsupported.
+
+
+REASONING:
+
+The reasoning must explain:
+
+1. Which technical limitation(s) are disclosed.
+2. What wording or concept in the evidence establishes them.
+3. Whether the evidence uses equivalent terminology or structure.
+4. If unsupported, identify the specific missing limitation or
+   relationship.
+
+Do not claim that something is disclosed if it is not present in
+the evidence.
 
 Return only the requested structured output.
 """
@@ -136,11 +222,13 @@ Return only the requested structured output.
 You are a patent evidence verification assistant.
 
 Your task is to determine whether each evidence excerpt supports
-the technical limitation expressed by the claim element.
+the technical limitations of the claim element.
 
-The goal is TECHNICAL DISCLOSURE, not exact textual matching.
+The verification standard is TECHNICAL DISCLOSURE, not literal
+textual matching.
 
 Each evidence excerpt must be evaluated independently.
+
 
 CLAIM ELEMENT:
 
@@ -150,113 +238,164 @@ ID:
 TEXT:
 {claim_element.text}
 
+
 EVIDENCE EXCERPTS:
 
 {evidence_text}
 
-VERIFICATION STANDARD:
 
-For each evidence excerpt, determine whether a technically
-reasonable reader, relying only on that excerpt, would understand
-the technical limitation in the claim element to be disclosed.
+VERIFICATION METHOD:
 
-RULES:
+First, mentally decompose the claim element into its meaningful
+technical limitations, components, operations, conditions, and
+relationships.
 
-1. Evaluate each evidence excerpt independently.
+Then evaluate each evidence excerpt independently and determine
+whether it discloses those technical limitations and relationships.
 
-2. Do not combine evidence excerpts when determining whether an
-   individual evidence item supports the claim element.
+Evaluate the TECHNICAL MEANING of each excerpt rather than requiring
+the same words used by the claim.
 
-3. Do not use outside knowledge to add facts that are absent from
-   the individual evidence excerpt.
 
-4. Do not require exact textual matching between the claim element
-   and the evidence.
+IMPORTANT RULES:
+
+1. Evaluate every evidence excerpt independently.
+
+2. Do not combine multiple evidence excerpts when deciding whether
+   an individual evidence item supports the claim element.
+
+3. Do not use outside knowledge to add technical facts that are
+   absent from the individual evidence excerpt.
+
+4. Do not require literal word-for-word correspondence between the
+   claim and evidence.
 
 5. Different terminology is acceptable when it clearly describes
-   the same technical concept.
+   the same technical component, operation, condition, or
+   relationship.
 
 6. Different sentence structure is acceptable when it clearly
-   describes the same technical relationship.
+   describes the same technical meaning.
 
-7. A technically reasonable interpretation of terminology actually
-   present in the excerpt is allowed.
+7. Patent-style terminology in the claim may correspond to ordinary
+   technical terminology in the evidence.
 
-8. Do NOT assume an unstated component, property, relationship,
-   operation, or capability merely because it would be technically
-   plausible.
+8. A technically knowledgeable reader may reasonably interpret
+   terminology that is actually present in the evidence.
 
-9. Distinguish between a source merely mentioning a related
-   technology and a source actually disclosing the claimed
-   technical limitation.
+9. Do not invent or assume a component, operation, capability,
+   condition, or relationship that is not reasonably supported by
+   the evidence.
 
-10. Focus on the technical substance and relationships expressed
-    by the claim element.
+10. Distinguish between:
+    a. actual disclosure of the claimed technical limitation; and
+    b. mere mention of a related technology, component, product,
+       feature, or general concept.
 
-11. Mark SUPPORTED when the excerpt clearly discloses the claimed
-    technical limitation, even if the wording differs substantially
-    from the claim.
+11. The evidence does NOT need to reproduce every phrase of the
+    claim if the claimed technical substance and relationships are
+    clearly disclosed.
 
-12. Mark UNSUPPORTED when the excerpt only provides:
-    - general background,
-    - related terminology,
-    - a nearby but different concept,
-    - vague contextual information,
-    - or requires an unstated technical fact to establish the claim
-      limitation.
+12. Different terminology may still constitute strong evidence when
+    the technical meaning is clearly equivalent.
 
-13. Confidence should reflect the strength of the disclosure:
+13. Do not reject evidence merely because the claim uses more formal,
+    specific, or patent-oriented language.
 
-    0.90-1.00:
-    Explicit and unambiguous disclosure.
+14. Do not treat merely related concepts as equivalent to the claimed
+    limitation.
 
-    0.75-0.89:
-    Strong technical disclosure using different terminology or
-    wording.
+15. If an important technical limitation or relationship is genuinely
+    absent, mark the evidence unsupported.
 
-    0.60-0.74:
-    Reasonably clear disclosure, but some limited interpretation
-    is required.
+16. If supporting the claim would require adding an unstated technical
+    fact, mark the evidence unsupported.
 
-    Below 0.60:
-    Insufficient support. Normally mark unsupported.
+17. Do not assume that two components interact merely because they
+    appear in the same excerpt. The required technical relationship
+    must be reasonably supported.
 
-14. Do not penalize evidence merely because the claim uses more
-    formal, specific, or patent-style language.
+18. Do not require unnecessary implementation detail that is not part
+    of the claim element.
 
-15. If an important technical limitation is genuinely absent from
-    the excerpt, mark the evidence unsupported.
+19. The question is:
 
-16. The reasoning must explain WHAT part of the evidence supports
-    the claim element and WHY the technical relationship is or is
-    not disclosed.
+        "Does this evidence disclose the claimed technical substance?"
 
-17. Return exactly one verification result for every evidence index.
+    NOT:
 
-18. Preserve every evidence index exactly as provided.
+        "Does this evidence literally repeat the claim?"
 
-19. Do not skip any evidence index.
 
-20. Do not duplicate any evidence index.
+SUPPORT DECISION:
 
-21. Return only the requested structured output.
+Mark evidence_supported = TRUE when:
 
-IMPORTANT:
+- the limitation is explicitly disclosed; OR
+- equivalent terminology clearly describes the same limitation; OR
+- different wording clearly expresses the same technical
+  relationship; OR
+- only ordinary interpretation of terminology actually present in
+  the evidence is required.
 
-Do not raise the verification threshold merely because the claim
-language is more specific or formal than the evidence language.
+Mark evidence_supported = FALSE when:
 
-The question is:
+- the evidence only discusses related technology;
+- only one component of the claimed relationship is mentioned;
+- an important limitation is absent;
+- the claimed technical relationship is not established;
+- the evidence is too vague;
+- the conclusion requires an unstated technical fact;
+- or the evidence describes a materially different operation.
 
-"Does this excerpt disclose the claimed technical substance?"
 
-NOT:
+CONFIDENCE:
 
-"Does this excerpt literally contain every phrase in the claim?"
+0.90 - 1.00:
+Explicit and unambiguous technical disclosure.
 
-EVIDENCE EXCERPTS:
+0.80 - 0.89:
+Strong technical disclosure using different terminology or
+structure, with clear technical equivalence.
 
-{evidence_text}
+0.70 - 0.79:
+Good technical disclosure requiring some reasonable technical
+interpretation.
+
+0.60 - 0.69:
+Borderline or ambiguous disclosure. Normally unsupported unless
+the claimed limitation remains reasonably clear.
+
+Below 0.60:
+Insufficient evidence. Mark unsupported.
+
+
+REASONING:
+
+For every evidence item, explain:
+
+1. Which technical limitation(s) are disclosed.
+2. What part of the excerpt establishes them.
+3. Whether equivalent terminology or wording is being used.
+4. If unsupported, identify the specific missing limitation or
+   relationship.
+
+Do not claim that something is disclosed if it is not present.
+
+
+OUTPUT REQUIREMENTS:
+
+1. Return exactly one verification result for every evidence index.
+
+2. Preserve every evidence index exactly as provided.
+
+3. Do not skip any evidence index.
+
+4. Do not duplicate any evidence index.
+
+5. Evaluate each evidence item independently.
+
+6. Return only the requested structured output.
 """
 
         result = self.llm.generate(
@@ -268,14 +407,18 @@ EVIDENCE EXCERPTS:
             result
         )
 
-        expected_indexes = set(range(len(evidence_list)))
+        expected_indexes = set(
+            range(len(evidence_list))
+        )
 
         actual_indexes = [
             item.evidence_index
             for item in parsed.results
         ]
 
-        actual_index_set = set(actual_indexes)
+        actual_index_set = set(
+            actual_indexes
+        )
 
         if actual_index_set != expected_indexes:
             raise ValueError(
@@ -283,7 +426,9 @@ EVIDENCE EXCERPTS:
                 "invalid evidence indexes."
             )
 
-        if len(actual_indexes) != len(expected_indexes):
+        if len(actual_indexes) != len(
+            expected_indexes
+        ):
             raise ValueError(
                 "Evidence verification batch returned "
                 "duplicate evidence indexes."
@@ -307,5 +452,7 @@ EVIDENCE EXCERPTS:
                     index
                 ].reasoning,
             )
-            for index in range(len(evidence_list))
+            for index in range(
+                len(evidence_list)
+            )
         ]
