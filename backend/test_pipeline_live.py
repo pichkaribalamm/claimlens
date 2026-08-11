@@ -35,6 +35,7 @@ claim = Claim(
     ),
 )
 
+
 target = TargetScope(
     company="Nokia",
     product="Cloud",
@@ -54,10 +55,12 @@ print(
 )
 
 for element in parsed_claim.elements:
+
     print(
         f"- {element.id}: "
         f"{element.text}"
     )
+
 
 claim_elements = parsed_claim.elements
 
@@ -77,10 +80,12 @@ print(
 )
 
 for profile in technology_profiles:
+
     print(
         f"- {profile.claim_element_id}: "
         f"{profile.core_concept}"
     )
+
 
 profiles_by_id = {
     profile.claim_element_id: profile
@@ -116,6 +121,7 @@ for search_plan in search_plans:
     )
 
     for query in search_plan.queries:
+
         print(
             f"- [{query.priority}] "
             f"{query.query}"
@@ -128,37 +134,86 @@ search_service = SearchService()
 
 search_results_by_element = {}
 
+
 for search_plan in search_plans:
 
     element_results = []
 
-    prioritized_queries = sorted(
-        search_plan.queries,
-        key=lambda query: query.priority,
-    )
-
     print(
-        f"\nSearching top "
-        f"{min(2, len(prioritized_queries))} "
-        f"priority queries for element "
+        f"\nSearching all planned queries "
+        f"for element "
         f"{search_plan.claim_element_id}"
     )
 
-    for query in prioritized_queries[:2]:
+    for query in search_plan.queries:
 
-        results = search_service.search(query)
+        try:
 
-        print(
-            f"\nQuery: {query.query}"
-            f"\nPriority: {query.priority}"
-            f"\nResults: {len(results)}"
+            results = search_service.search(
+                query
+            )
+
+            print(
+                f"\nQuery: {query.query}"
+                f"\nPriority: {query.priority}"
+                f"\nResults: {len(results)}"
+            )
+
+            element_results.extend(
+                results
+            )
+
+        except Exception as exc:
+
+            print(
+                f"\nQuery failed: "
+                f"{query.query}"
+            )
+
+            print(
+                f"Reason: {exc}"
+            )
+
+
+    # --------------------------------------------------
+    # Deduplicate search results by URL.
+    #
+    # The same source may appear for multiple queries.
+    # Preserve the first occurrence so higher-priority
+    # queries naturally retain precedence.
+    # --------------------------------------------------
+
+    unique_results = []
+
+    seen_urls = set()
+
+    for search_result in element_results:
+
+        normalized_url = str(
+            search_result.url
+        ).strip().rstrip("/")
+
+        if normalized_url in seen_urls:
+            continue
+
+        seen_urls.add(
+            normalized_url
         )
 
-        element_results.extend(results)
+        unique_results.append(
+            search_result
+        )
+
 
     search_results_by_element[
         search_plan.claim_element_id
-    ] = element_results
+    ] = unique_results
+
+    print(
+        f"\nUnique search results for "
+        f"element {search_plan.claim_element_id}: "
+        f"{len(unique_results)}"
+    )
 
 
 total_search_results = sum(
@@ -166,8 +221,9 @@ total_search_results = sum(
     for results in search_results_by_element.values()
 )
 
+
 print(
-    f"\nTotal search results collected: "
+    f"\nTotal unique search results collected: "
     f"{total_search_results}"
 )
 
@@ -180,6 +236,7 @@ fetcher = PageFetcher()
 reducer = PageContentReducer()
 
 sources_by_element = {}
+
 
 for element in claim_elements:
 
@@ -194,6 +251,9 @@ for element in claim_elements:
 
     sources_for_extraction = []
 
+    # Keep the page-fetch budget capped at five sources
+    # per claim element even though we search all planned
+    # queries above.
     for search_result in search_results[:5]:
 
         try:
@@ -221,12 +281,14 @@ for element in claim_elements:
 
                 continue
 
+
             sources_for_extraction.append(
                 (
                     search_result,
                     reduced_content,
                 )
             )
+
 
         except Exception as exc:
 
@@ -239,9 +301,11 @@ for element in claim_elements:
                 f"Reason: {exc}"
             )
 
-    sources_by_element[element.id] = (
-        sources_for_extraction
-    )
+
+    sources_by_element[
+        element.id
+    ] = sources_for_extraction
+
 
     print(
         f"\nClaim element {element.id}: "
@@ -255,6 +319,7 @@ print("\n=== BATCH EVIDENCE EXTRACTION ===")
 extractor = EvidenceExtractor()
 
 potential_evidence_by_element = {}
+
 
 for element in claim_elements:
 
@@ -276,12 +341,14 @@ for element in claim_elements:
 
         continue
 
+
     extraction_results = extractor.extract_batch(
         element,
         sources_for_extraction,
     )
 
     potential_evidence = []
+
 
     for search_result, evidence_list in zip(
         (
@@ -309,9 +376,11 @@ for element in claim_elements:
                 f"{search_result.title}"
             )
 
+
     potential_evidence_by_element[
         element.id
     ] = potential_evidence
+
 
     print(
         f"\nClaim element {element.id} "
@@ -322,8 +391,11 @@ for element in claim_elements:
 
 total_potential_evidence = sum(
     len(evidence)
-    for evidence in potential_evidence_by_element.values()
+    for evidence in (
+        potential_evidence_by_element.values()
+    )
 )
+
 
 print(
     f"\nTotal potential evidence findings: "
@@ -336,6 +408,7 @@ print("\n=== BATCH EVIDENCE VERIFICATION ===")
 verifier = EvidenceVerifier()
 
 verified_evidence_by_element = {}
+
 
 for element in claim_elements:
 
@@ -359,12 +432,15 @@ for element in claim_elements:
 
         continue
 
+
     verification_results = verifier.verify_batch(
         element,
         potential_evidence,
     )
 
+
     verified_evidence = []
+
 
     for evidence, verification in zip(
         potential_evidence,
@@ -386,6 +462,7 @@ for element in claim_elements:
             f"{verification.confidence}"
         )
 
+
         if verification.evidence_supported:
 
             verified_evidence.append(
@@ -395,9 +472,11 @@ for element in claim_elements:
                 )
             )
 
+
     verified_evidence_by_element[
         element.id
     ] = verified_evidence
+
 
     print(
         f"\nClaim element {element.id} "
@@ -408,8 +487,11 @@ for element in claim_elements:
 
 total_verified_evidence = sum(
     len(evidence)
-    for evidence in verified_evidence_by_element.values()
+    for evidence in (
+        verified_evidence_by_element.values()
+    )
 )
+
 
 print(
     f"\nTotal verified evidence: "
@@ -423,6 +505,7 @@ mapper = ClaimMapper()
 
 element_mappings = []
 
+
 for element in claim_elements:
 
     verified_evidence = (
@@ -432,14 +515,17 @@ for element in claim_elements:
         )
     )
 
+
     mapping = mapper.map(
         element,
         verified_evidence,
     )
 
+
     element_mappings.append(
         mapping
     )
+
 
     print(
         f"\nClaim element: "
@@ -475,6 +561,7 @@ analysis = analyzer.analyze(
     claim,
     element_mappings,
 )
+
 
 print(
     f"Claim: "
