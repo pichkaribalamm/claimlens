@@ -10,13 +10,15 @@ class PageContentReducer:
 
     def __init__(
         self,
-        window_size: int = 450,
-        max_chars: int = 5000,
-        max_passages: int = 6,
+        window_size: int = 220,
+        max_chars: int = 4500,
+        max_passages: int = 8,
+        max_passage_chars: int = 650,
     ):
         self.window_size = window_size
         self.max_chars = max_chars
         self.max_passages = max_passages
+        self.max_passage_chars = max_passage_chars
 
     def reduce(
         self,
@@ -134,7 +136,7 @@ class PageContentReducer:
             return ""
 
         # --------------------------------------------------
-        # 3. Rank windows.
+        # 3. Rank windows by technical relevance.
         # --------------------------------------------------
 
         windows.sort(
@@ -144,9 +146,23 @@ class PageContentReducer:
             )
         )
 
+        selected_passages = []
+
         selected_ranges = []
 
+        total_chars = 0
+
+        # --------------------------------------------------
+        # 4. Convert windows into concise passages.
+        #
+        # The reducer should not pass large arbitrary chunks
+        # to the evidence extractor.
+        # --------------------------------------------------
+
         for score, start, end, window in windows:
+
+            if len(selected_passages) >= self.max_passages:
+                break
 
             if self._overlaps_selected_range(
                 start,
@@ -155,6 +171,54 @@ class PageContentReducer:
             ):
                 continue
 
+            passage = self._trim_to_sentence_boundary(
+                window
+            )
+
+            passage = self._center_relevant_content(
+                passage,
+                phrases,
+                terms,
+            )
+
+            passage = passage.strip()
+
+            if not passage:
+                continue
+
+            if len(passage) > self.max_passage_chars:
+
+                passage = self._truncate_passage(
+                    passage,
+                    phrases,
+                    terms,
+                )
+
+            passage = passage.strip()
+
+            if not passage:
+                continue
+
+            remaining_chars = (
+                self.max_chars
+                - total_chars
+            )
+
+            if remaining_chars <= 0:
+                break
+
+            if len(passage) > remaining_chars:
+                passage = passage[:remaining_chars].rstrip()
+
+            if not passage:
+                break
+
+            selected_passages.append(
+                passage
+            )
+
+            total_chars += len(passage)
+
             selected_ranges.append(
                 (
                     start,
@@ -162,67 +226,44 @@ class PageContentReducer:
                 )
             )
 
-            if (
-                len(selected_ranges)
-                >= self.max_passages
-            ):
-                break
-
-        if not selected_ranges:
-            return ""
-
-        # --------------------------------------------------
-        # 4. Restore document order.
-        # --------------------------------------------------
-
-        selected_ranges.sort()
-
-        passages = []
-
-        total_chars = 0
-
-        for start, end in selected_ranges:
-
-            passage = normalized_content[
-                start:end
-            ].strip()
-
-            if not passage:
-                continue
-
-            # --------------------------------------------------
-            # Avoid adding a passage that would exceed the
-            # total character budget.
-            # --------------------------------------------------
-
-            remaining = (
-                self.max_chars
-                - total_chars
-            )
-
-            if remaining <= 0:
-                break
-
-            if len(passage) > remaining:
-
-                passage = passage[
-                    :remaining
-                ].rstrip()
-
-            if not passage:
-                break
-
-            passages.append(
-                passage
-            )
-
-            total_chars += len(passage)
-
             if total_chars >= self.max_chars:
                 break
 
-        if not passages:
+        if not selected_passages:
             return ""
+
+        # --------------------------------------------------
+        # 5. Restore document order.
+        #
+        # The selected passages are currently ranked by score.
+        # We sort using their original positions.
+        # --------------------------------------------------
+
+        passage_positions = []
+
+        for passage in selected_passages:
+
+            position = normalized_content.find(
+                passage
+            )
+
+            passage_positions.append(
+                (
+                    position if position >= 0 else len(
+                        normalized_content
+                    ),
+                    passage,
+                )
+            )
+
+        passage_positions.sort(
+            key=lambda item: item[0]
+        )
+
+        passages = [
+            passage
+            for _, passage in passage_positions
+        ]
 
         return (
             "\n\n"
@@ -230,6 +271,10 @@ class PageContentReducer:
             "\n\n"
             .join(passages)
         )
+
+    # ========================================================
+    # CONTENT NORMALIZATION
+    # ========================================================
 
     def _normalize_content(
         self,
@@ -243,6 +288,10 @@ class PageContentReducer:
         )
 
         return content.strip()
+
+    # ========================================================
+    # PHRASE EXTRACTION
+    # ========================================================
 
     def _extract_phrases(
         self,
@@ -324,11 +373,16 @@ class PageContentReducer:
                         continue
 
                     if phrase not in phrases:
+
                         phrases.append(
                             phrase
                         )
 
         return phrases
+
+    # ========================================================
+    # TERM EXTRACTION
+    # ========================================================
 
     def _extract_terms(
         self,
@@ -382,6 +436,10 @@ class PageContentReducer:
 
         return terms
 
+    # ========================================================
+    # WINDOW SCORING
+    # ========================================================
+
     def _score_window(
         self,
         window: str,
@@ -395,8 +453,6 @@ class PageContentReducer:
 
         # --------------------------------------------------
         # Exact technical phrases.
-        #
-        # Longer phrases receive more weight.
         # --------------------------------------------------
 
         for phrase in phrases:
@@ -409,10 +465,13 @@ class PageContentReducer:
 
                 if word_count >= 4:
                     score += 8
+
                 elif word_count == 3:
                     score += 6
+
                 elif word_count == 2:
                     score += 4
+
                 else:
                     score += 2
 
@@ -438,7 +497,183 @@ class PageContentReducer:
             8,
         )
 
+        # --------------------------------------------------
+        # Reward technical density.
+        #
+        # A window containing several relevant terms is
+        # preferable to one containing a single isolated
+        # generic term.
+        # --------------------------------------------------
+
+        if len(matched_terms) >= 3:
+            score += 3
+
+        if len(matched_terms) >= 5:
+            score += 3
+
         return score
+
+    # ========================================================
+    # SENTENCE BOUNDARY HANDLING
+    # ========================================================
+
+    def _trim_to_sentence_boundary(
+        self,
+        text: str,
+    ) -> str:
+
+        text = text.strip()
+
+        if not text:
+            return ""
+
+        if len(text) <= self.max_passage_chars:
+            return text
+
+        # --------------------------------------------------
+        # Prefer complete sentences.
+        # --------------------------------------------------
+
+        sentences = re.split(
+            r"(?<=[.!?])\s+",
+            text,
+        )
+
+        if not sentences:
+            return text
+
+        selected = []
+
+        total = 0
+
+        for sentence in sentences:
+
+            sentence = sentence.strip()
+
+            if not sentence:
+                continue
+
+            if (
+                total + len(sentence) + 1
+                > self.max_passage_chars
+            ):
+                break
+
+            selected.append(
+                sentence
+            )
+
+            total += (
+                len(sentence) + 1
+            )
+
+        if selected:
+            return " ".join(
+                selected
+            )
+
+        return text
+
+    # ========================================================
+    # CENTER RELEVANT CONTENT
+    # ========================================================
+
+    def _center_relevant_content(
+        self,
+        passage: str,
+        phrases: list[str],
+        terms: list[str],
+    ) -> str:
+
+        if len(passage) <= self.max_passage_chars:
+            return passage
+
+        lower_passage = passage.lower()
+
+        best_position = None
+
+        best_score = -1
+
+        # Prefer a longer exact phrase as the center.
+        for phrase in phrases:
+
+            position = lower_passage.find(
+                phrase
+            )
+
+            if position < 0:
+                continue
+
+            phrase_score = len(
+                phrase.split()
+            )
+
+            if phrase_score > best_score:
+
+                best_score = phrase_score
+                best_position = position
+
+        # Fall back to the densest technical term.
+        if best_position is None:
+
+            for term in terms:
+
+                position = lower_passage.find(
+                    term
+                )
+
+                if position < 0:
+                    continue
+
+                best_position = position
+                break
+
+        if best_position is None:
+            return passage
+
+        half_window = (
+            self.max_passage_chars // 2
+        )
+
+        start = max(
+            0,
+            best_position - half_window,
+        )
+
+        end = min(
+            len(passage),
+            start + self.max_passage_chars,
+        )
+
+        return passage[start:end]
+
+    # ========================================================
+    # PASSAGE TRUNCATION
+    # ========================================================
+
+    def _truncate_passage(
+        self,
+        passage: str,
+        phrases: list[str],
+        terms: list[str],
+    ) -> str:
+
+        passage = self._center_relevant_content(
+            passage,
+            phrases,
+            terms,
+        )
+
+        if len(passage) <= self.max_passage_chars:
+            return passage
+
+        return passage[
+            :self.max_passage_chars
+        ].rstrip()
+
+    # ========================================================
+    # OVERLAP CHECKING
+    # ========================================================
 
     def _overlaps_selected_range(
         self,
@@ -456,9 +691,14 @@ class PageContentReducer:
                 start < selected_end
                 and end > selected_start
             ):
+
                 return True
 
         return False
+
+    # ========================================================
+    # STOP WORDS
+    # ========================================================
 
     def _stop_words(self) -> set[str]:
 
@@ -487,7 +727,16 @@ class PageContentReducer:
             "method",
             "system",
             "device",
+            "configured",
+            "using",
+            "based",
+            "response",
+            "within",
         }
+
+    # ========================================================
+    # STOP PHRASES
+    # ========================================================
 
     def _stop_phrases(self) -> set[str]:
 
