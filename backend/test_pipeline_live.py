@@ -63,32 +63,38 @@ target = TargetScope(
 # CLAIM PARSER
 # ============================================================
 
-print("\n=== CLAIM PARSER ===")
+print("\n" + "=" * 70)
+print("CLAIM PARSER")
+print("=" * 70)
 
 parser = ClaimParser()
 
-parsed_claim = parser.parse(claim)
-
-print(
-    f"Elements found: "
-    f"{len(parsed_claim.elements)}"
+parsed_claim = parser.parse(
+    claim
 )
 
-for element in parsed_claim.elements:
+claim_elements = parsed_claim.elements
+
+print(
+    f"\nElements found: "
+    f"{len(claim_elements)}"
+)
+
+for element in claim_elements:
 
     print(
-        f"- {element.id}: "
+        f"\n[{element.id}] "
         f"{element.text}"
     )
-
-claim_elements = parsed_claim.elements
 
 
 # ============================================================
 # TECHNOLOGY PROFILER
 # ============================================================
 
-print("\n=== TECHNOLOGY PROFILER ===")
+print("\n" + "=" * 70)
+print("TECHNOLOGY PROFILER")
+print("=" * 70)
 
 profiler = TechnologyProfiler()
 
@@ -98,28 +104,30 @@ technology_profiles = profiler.profile_batch(
 )
 
 print(
-    f"Profiles generated: "
+    f"\nProfiles generated: "
     f"{len(technology_profiles)}"
 )
-
-for profile in technology_profiles:
-
-    print(
-        f"- {profile.claim_element_id}: "
-        f"{profile.core_concept}"
-    )
 
 profiles_by_id = {
     profile.claim_element_id: profile
     for profile in technology_profiles
 }
 
+for profile in technology_profiles:
+
+    print(
+        f"\n[{profile.claim_element_id}] "
+        f"{profile.core_concept}"
+    )
+
 
 # ============================================================
 # SEARCH PLANNER
 # ============================================================
 
-print("\n=== SEARCH PLANNER ===")
+print("\n" + "=" * 70)
+print("SEARCH PLANNER")
+print("=" * 70)
 
 planner = SearchPlanner()
 
@@ -130,26 +138,26 @@ search_plans = planner.plan_batch(
 )
 
 print(
-    f"Search plans generated: "
+    f"\nSearch plans generated: "
     f"{len(search_plans)}"
 )
 
 for search_plan in search_plans:
 
     print(
-        f"\nClaim element: "
-        f"{search_plan.claim_element_id}"
+        f"\n--- Element "
+        f"{search_plan.claim_element_id} ---"
     )
 
     print(
-        f"Queries generated: "
+        f"Queries: "
         f"{len(search_plan.queries)}"
     )
 
     for query in search_plan.queries:
 
         print(
-            f"- [{query.priority}] "
+            f"[{query.priority}] "
             f"{query.query}"
         )
 
@@ -158,7 +166,9 @@ for search_plan in search_plans:
 # SEARCH SERVICE
 # ============================================================
 
-print("\n=== SEARCH SERVICE ===")
+print("\n" + "=" * 70)
+print("SEARCH SERVICE")
+print("=" * 70)
 
 search_service = SearchService()
 
@@ -170,21 +180,14 @@ for search_plan in search_plans:
     element_results = []
 
     print(
-        f"\nSearching all planned queries "
-        f"for element "
-        f"{search_plan.claim_element_id}"
+        f"\n--- Element "
+        f"{search_plan.claim_element_id} ---"
     )
 
     for query in search_plan.queries:
 
         print(
-            f"\nQuery: "
-            f"{query.query}"
-        )
-
-        print(
-            f"Priority: "
-            f"{query.priority}"
+            f"\nQuery: {query.query}"
         )
 
         try:
@@ -194,7 +197,7 @@ for search_plan in search_plans:
             )
 
             print(
-                f"Results: "
+                f"Results returned: "
                 f"{len(results)}"
             )
 
@@ -205,8 +208,7 @@ for search_plan in search_plans:
         except Exception as exc:
 
             print(
-                f"Search failed for query: "
-                f"{query.query}"
+                f"SEARCH FAILED"
             )
 
             print(
@@ -214,7 +216,7 @@ for search_plan in search_plans:
             )
 
     # --------------------------------------------------------
-    # Deduplicate results.
+    # Deduplicate URLs.
     # --------------------------------------------------------
 
     unique_results = []
@@ -223,7 +225,9 @@ for search_plan in search_plans:
 
     for result in element_results:
 
-        url = str(result.url).strip()
+        url = str(
+            result.url
+        ).strip()
 
         if not url:
             continue
@@ -231,17 +235,20 @@ for search_plan in search_plans:
         if url in seen_urls:
             continue
 
-        seen_urls.add(url)
+        seen_urls.add(
+            url
+        )
 
-        unique_results.append(result)
+        unique_results.append(
+            result
+        )
 
     search_results_by_element[
         search_plan.claim_element_id
     ] = unique_results
 
     print(
-        f"\nUnique search results for element "
-        f"{search_plan.claim_element_id}: "
+        f"\nUnique search results: "
         f"{len(unique_results)}"
     )
 
@@ -252,7 +259,7 @@ total_search_results = sum(
 )
 
 print(
-    f"\nTotal unique search results collected: "
+    f"\nTOTAL UNIQUE SEARCH RESULTS: "
     f"{total_search_results}"
 )
 
@@ -261,7 +268,9 @@ print(
 # SOURCE QUALIFICATION
 # ============================================================
 
-print("\n=== SOURCE QUALIFICATION ===")
+print("\n" + "=" * 70)
+print("SOURCE QUALIFICATION")
+print("=" * 70)
 
 qualifier = SourceQualifier(
     minimum_tier=2
@@ -269,23 +278,32 @@ qualifier = SourceQualifier(
 
 qualified_results_by_element = {}
 
-total_qualified_sources = 0
+qualification_stats = {
+    "total": 0,
+    "qualified": 0,
+    "rejected": 0,
+}
 
 
 for element in claim_elements:
 
-    search_results = search_results_by_element.get(
-        element.id,
-        [],
+    search_results = (
+        search_results_by_element.get(
+            element.id,
+            [],
+        )
     )
 
     qualified_results = []
 
     print(
-        f"\nClaim element {element.id}"
+        f"\n--- Element "
+        f"{element.id} ---"
     )
 
     for result in search_results:
+
+        qualification_stats["total"] += 1
 
         try:
 
@@ -301,66 +319,75 @@ for element in claim_elements:
                 result
             )
 
-            print(
-                f"\nSource: "
-                f"{result.title}"
-            )
-
-            print(
-                f"URL: "
-                f"{result.url}"
-            )
-
-            print(
-                f"Quality: "
-                f"{label}"
-            )
-
-            print(
-                f"Tier: "
-                f"{tier}"
-            )
-
-            print(
-                f"Qualified: "
-                f"{qualified}"
-            )
-
             if qualified:
+
+                qualification_stats[
+                    "qualified"
+                ] += 1
 
                 qualified_results.append(
                     result
                 )
 
-        except Exception as exc:
+            else:
+
+                qualification_stats[
+                    "rejected"
+                ] += 1
 
             print(
-                f"\nSource qualification failed: "
-                f"{result.url}"
+                f"{'KEEP' if qualified else 'REJECT'} "
+                f"| {label} "
+                f"| {result.title}"
             )
 
             print(
-                f"Reason: {exc}"
+                f"  {result.url}"
+            )
+
+        except Exception as exc:
+
+            qualification_stats[
+                "rejected"
+            ] += 1
+
+            print(
+                f"QUALIFICATION ERROR "
+                f"| {result.url}"
+            )
+
+            print(
+                f"  Reason: {exc}"
             )
 
     qualified_results_by_element[
         element.id
     ] = qualified_results
 
-    total_qualified_sources += len(
-        qualified_results
-    )
-
     print(
-        f"\nQualified sources for element "
+        f"\nQualified for element "
         f"{element.id}: "
         f"{len(qualified_results)}"
     )
 
 
 print(
-    f"\nTotal qualified sources: "
-    f"{total_qualified_sources}"
+    f"\nQUALIFICATION SUMMARY"
+)
+
+print(
+    f"Search results: "
+    f"{qualification_stats['total']}"
+)
+
+print(
+    f"Qualified: "
+    f"{qualification_stats['qualified']}"
+)
+
+print(
+    f"Rejected: "
+    f"{qualification_stats['rejected']}"
 )
 
 
@@ -368,14 +395,23 @@ print(
 # PAGE FETCH + CONTENT REDUCTION
 # ============================================================
 
-print(
-    "\n=== PAGE FETCH + CONTENT REDUCTION ==="
-)
+print("\n" + "=" * 70)
+print("PAGE FETCH + CONTENT REDUCTION")
+print("=" * 70)
 
 fetcher = PageFetcher()
+
 reducer = PageContentReducer()
 
 sources_by_element = {}
+
+fetch_stats = {
+    "attempted": 0,
+    "fetched": 0,
+    "failed": 0,
+    "reduced": 0,
+    "empty_reduction": 0,
+}
 
 
 for element in claim_elements:
@@ -393,13 +429,59 @@ for element in claim_elements:
 
     sources_for_extraction = []
 
+    print(
+        f"\n--- Element "
+        f"{element.id} ---"
+    )
+
     for search_result in search_results:
+
+        fetch_stats[
+            "attempted"
+        ] += 1
+
+        print(
+            f"\nFETCHING:"
+        )
+
+        print(
+            f"{search_result.title}"
+        )
+
+        print(
+            f"{search_result.url}"
+        )
 
         try:
 
             page_content = fetcher.fetch(
                 search_result
             )
+
+            fetch_stats[
+                "fetched"
+            ] += 1
+
+            print(
+                f"  Fetch: SUCCESS"
+            )
+
+            print(
+                f"  Page length: "
+                f"{len(page_content)}"
+            )
+
+            if not page_content:
+
+                fetch_stats[
+                    "failed"
+                ] += 1
+
+                print(
+                    f"  Result: EMPTY PAGE"
+                )
+
+                continue
 
             reduced_content = reducer.reduce(
                 element,
@@ -409,17 +491,24 @@ for element in claim_elements:
 
             if not reduced_content:
 
+                fetch_stats[
+                    "empty_reduction"
+                ] += 1
+
                 print(
-                    f"\nSkipping source: "
-                    f"{search_result.url}"
+                    f"  Reduction: EMPTY"
                 )
 
                 print(
-                    "Reason: "
-                    "No relevant page content found."
+                    f"  Result: SOURCE DROPPED "
+                    f"BEFORE EXTRACTION"
                 )
 
                 continue
+
+            fetch_stats[
+                "reduced"
+            ] += 1
 
             sources_for_extraction.append(
                 (
@@ -429,29 +518,50 @@ for element in claim_elements:
             )
 
             print(
-                f"\nPrepared source: "
-                f"{search_result.title}"
+                f"  Reduction: SUCCESS"
             )
 
             print(
-                f"URL: "
-                f"{search_result.url}"
-            )
-
-            print(
-                f"Reduced content length: "
+                f"  Reduced length: "
                 f"{len(reduced_content)}"
+            )
+
+            # ------------------------------------------------
+            # Show a short preview only.
+            #
+            # Do NOT dump the entire reducer output.
+            # ------------------------------------------------
+
+            preview = (
+                reduced_content
+                .replace("\n", " ")
+                .strip()
+            )
+
+            if len(preview) > 300:
+
+                preview = (
+                    preview[:300]
+                    + "..."
+                )
+
+            print(
+                f"  Preview: "
+                f"{preview}"
             )
 
         except Exception as exc:
 
+            fetch_stats[
+                "failed"
+            ] += 1
+
             print(
-                f"\nSkipping source: "
-                f"{search_result.url}"
+                f"  Fetch/Reduction: FAILED"
             )
 
             print(
-                f"Reason: {exc}"
+                f"  Reason: {exc}"
             )
 
     sources_by_element[
@@ -459,23 +569,59 @@ for element in claim_elements:
     ] = sources_for_extraction
 
     print(
-        f"\nClaim element {element.id}: "
-        f"{len(sources_for_extraction)} "
-        f"sources prepared for extraction"
+        f"\nSources prepared for extraction: "
+        f"{len(sources_for_extraction)}"
     )
+
+
+print(
+    f"\nFETCH / REDUCTION SUMMARY"
+)
+
+print(
+    f"Fetch attempts: "
+    f"{fetch_stats['attempted']}"
+)
+
+print(
+    f"Successful fetches: "
+    f"{fetch_stats['fetched']}"
+)
+
+print(
+    f"Fetch failures: "
+    f"{fetch_stats['failed']}"
+)
+
+print(
+    f"Successful reductions: "
+    f"{fetch_stats['reduced']}"
+)
+
+print(
+    f"Empty reductions: "
+    f"{fetch_stats['empty_reduction']}"
+)
 
 
 # ============================================================
 # BATCH EVIDENCE EXTRACTION
 # ============================================================
 
-print(
-    "\n=== BATCH EVIDENCE EXTRACTION ==="
-)
+print("\n" + "=" * 70)
+print("BATCH EVIDENCE EXTRACTION")
+print("=" * 70)
 
 extractor = EvidenceExtractor()
 
 potential_evidence_by_element = {}
+
+extraction_stats = {
+    "sources_submitted": 0,
+    "sources_with_evidence": 0,
+    "sources_without_evidence": 0,
+    "evidence_items": 0,
+}
 
 
 for element in claim_elements:
@@ -494,61 +640,119 @@ for element in claim_elements:
         ] = []
 
         print(
-            f"\nClaim element {element.id}: "
-            f"No sources prepared for extraction"
+            f"\nElement {element.id}: "
+            f"No sources prepared."
         )
 
         continue
 
-    extraction_results = (
-        extractor.extract_batch(
-            element,
-            sources_for_extraction,
-        )
+    extraction_stats[
+        "sources_submitted"
+    ] += len(
+        sources_for_extraction
     )
+
+    try:
+
+        extraction_results = (
+            extractor.extract_batch(
+                element,
+                sources_for_extraction,
+            )
+        )
+
+    except Exception as exc:
+
+        print(
+            f"\nEXTRACTION FAILED "
+            f"FOR ELEMENT {element.id}"
+        )
+
+        print(
+            f"Reason: {exc}"
+        )
+
+        potential_evidence_by_element[
+            element.id
+        ] = []
+
+        continue
 
     potential_evidence = []
 
-    for search_result, evidence_list in zip(
+    for (
+        search_result,
+        evidence_list,
+    ) in zip(
         (
             source
-            for source, _ in sources_for_extraction
+            for source, _
+            in sources_for_extraction
         ),
         extraction_results,
     ):
 
         if evidence_list:
 
+            extraction_stats[
+                "sources_with_evidence"
+            ] += 1
+
+            extraction_stats[
+                "evidence_items"
+            ] += len(
+                evidence_list
+            )
+
             potential_evidence.extend(
                 evidence_list
             )
 
             print(
-                f"\nEvidence found: "
+                f"\nEVIDENCE FOUND"
+            )
+
+            print(
+                f"Source: "
                 f"{search_result.title}"
             )
 
-            for evidence in evidence_list:
+            for index, evidence in enumerate(
+                evidence_list,
+                start=1,
+            ):
 
                 print(
-                    f"Excerpt: "
-                    f"{evidence.excerpt}"
+                    f"\n  Evidence {index}"
                 )
 
                 print(
-                    f"Evidence type: "
+                    f"  Type: "
                     f"{evidence.evidence_type}"
                 )
 
                 print(
-                    f"Relevance: "
+                    f"  Relevance: "
                     f"{evidence.relevance}"
+                )
+
+                print(
+                    f"  Excerpt: "
+                    f"{evidence.excerpt}"
                 )
 
         else:
 
+            extraction_stats[
+                "sources_without_evidence"
+            ] += 1
+
             print(
-                f"\nNo evidence found: "
+                f"\nNO EVIDENCE"
+            )
+
+            print(
+                f"Source: "
                 f"{search_result.title}"
             )
 
@@ -557,22 +761,34 @@ for element in claim_elements:
     ] = potential_evidence
 
     print(
-        f"\nClaim element {element.id} "
-        f"potential evidence findings: "
-        f"{len(potential_evidence)}"
+        f"\nElement {element.id}: "
+        f"{len(potential_evidence)} "
+        f"potential evidence items"
     )
 
 
-total_potential_evidence = sum(
-    len(evidence)
-    for evidence in (
-        potential_evidence_by_element.values()
-    )
+print(
+    f"\nEXTRACTION SUMMARY"
 )
 
 print(
-    f"\nTotal potential evidence findings: "
-    f"{total_potential_evidence}"
+    f"Sources submitted: "
+    f"{extraction_stats['sources_submitted']}"
+)
+
+print(
+    f"Sources with evidence: "
+    f"{extraction_stats['sources_with_evidence']}"
+)
+
+print(
+    f"Sources without evidence: "
+    f"{extraction_stats['sources_without_evidence']}"
+)
+
+print(
+    f"Total evidence items: "
+    f"{extraction_stats['evidence_items']}"
 )
 
 
@@ -580,13 +796,22 @@ print(
 # BATCH EVIDENCE VERIFICATION
 # ============================================================
 
-print(
-    "\n=== BATCH EVIDENCE VERIFICATION ==="
-)
+print("\n" + "=" * 70)
+print("BATCH EVIDENCE VERIFICATION")
+print("=" * 70)
 
 verifier = EvidenceVerifier()
 
 verified_evidence_by_element = {}
+
+verification_stats = {
+    "submitted": 0,
+    "direct": 0,
+    "supportive": 0,
+    "inferential": 0,
+    "contextual": 0,
+    "unsupported": 0,
+}
 
 
 for element in claim_elements:
@@ -605,18 +830,43 @@ for element in claim_elements:
         ] = []
 
         print(
-            f"\nClaim element {element.id}: "
-            f"No evidence to verify"
+            f"\nElement {element.id}: "
+            f"No evidence to verify."
         )
 
         continue
 
-    verification_results = (
-        verifier.verify_batch(
-            element,
-            potential_evidence,
-        )
+    verification_stats[
+        "submitted"
+    ] += len(
+        potential_evidence
     )
+
+    try:
+
+        verification_results = (
+            verifier.verify_batch(
+                element,
+                potential_evidence,
+            )
+        )
+
+    except Exception as exc:
+
+        print(
+            f"\nVERIFICATION FAILED "
+            f"FOR ELEMENT {element.id}"
+        )
+
+        print(
+            f"Reason: {exc}"
+        )
+
+        verified_evidence_by_element[
+            element.id
+        ] = []
+
+        continue
 
     verified_evidence = []
 
@@ -625,18 +875,32 @@ for element in claim_elements:
         verification_results,
     ):
 
+        support_level = (
+            verification.support_level
+        )
+
+        if support_level in verification_stats:
+
+            verification_stats[
+                support_level
+            ] += 1
+
         print(
-            f"\nSource: "
+            f"\nEVIDENCE VERIFICATION"
+        )
+
+        print(
+            f"Source: "
             f"{evidence.source_title}"
         )
 
         print(
-            f"Excerpt: "
-            f"{evidence.excerpt}"
+            f"Support level: "
+            f"{support_level}"
         )
 
         print(
-            f"Supported: "
+            f"Evidence supported: "
             f"{verification.evidence_supported}"
         )
 
@@ -664,22 +928,55 @@ for element in claim_elements:
     ] = verified_evidence
 
     print(
-        f"\nClaim element {element.id} "
-        f"verified evidence: "
-        f"{len(verified_evidence)}"
+        f"\nElement {element.id}: "
+        f"{len(verified_evidence)} "
+        f"verified evidence items"
     )
 
 
-total_verified_evidence = sum(
-    len(evidence)
-    for evidence in (
-        verified_evidence_by_element.values()
-    )
+print(
+    f"\nVERIFICATION SUMMARY"
 )
 
 print(
-    f"\nTotal verified evidence: "
-    f"{total_verified_evidence}"
+    f"Evidence submitted: "
+    f"{verification_stats['submitted']}"
+)
+
+print(
+    f"Direct: "
+    f"{verification_stats['direct']}"
+)
+
+print(
+    f"Supportive: "
+    f"{verification_stats['supportive']}"
+)
+
+print(
+    f"Inferential: "
+    f"{verification_stats['inferential']}"
+)
+
+print(
+    f"Contextual: "
+    f"{verification_stats['contextual']}"
+)
+
+print(
+    f"Unsupported: "
+    f"{verification_stats['unsupported']}"
+)
+
+total_verified = (
+    verification_stats["direct"]
+    + verification_stats["supportive"]
+    + verification_stats["inferential"]
+)
+
+print(
+    f"Retained for mapping: "
+    f"{total_verified}"
 )
 
 
@@ -687,11 +984,18 @@ print(
 # CLAIM MAPPING
 # ============================================================
 
-print("\n=== CLAIM MAPPING ===")
+print("\n" + "=" * 70)
+print("CLAIM MAPPING")
+print("=" * 70)
 
 mapper = ClaimMapper()
 
 element_mappings = []
+
+mapping_stats = {
+    "supported": 0,
+    "unsupported": 0,
+}
 
 
 for element in claim_elements:
@@ -703,23 +1007,58 @@ for element in claim_elements:
         )
     )
 
-    mapping = mapper.map(
-        element,
-        verified_evidence,
+    print(
+        f"\n--- Element {element.id} ---"
     )
+
+    print(
+        f"Verified evidence available: "
+        f"{len(verified_evidence)}"
+    )
+
+    try:
+
+        mapping = mapper.map(
+            element,
+            verified_evidence,
+        )
+
+    except Exception as exc:
+
+        print(
+            f"MAPPING FAILED"
+        )
+
+        print(
+            f"Reason: {exc}"
+        )
+
+        raise
 
     element_mappings.append(
         mapping
     )
 
-    print(
-        f"\nClaim element: "
-        f"{mapping.claim_element_id}"
-    )
+    if mapping.supported:
+
+        mapping_stats[
+            "supported"
+        ] += 1
+
+    else:
+
+        mapping_stats[
+            "unsupported"
+        ] += 1
 
     print(
         f"Supported: "
         f"{mapping.supported}"
+    )
+
+    print(
+        f"Support level: "
+        f"{mapping.support_level}"
     )
 
     print(
@@ -733,8 +1072,16 @@ for element in claim_elements:
     )
 
     print(
-        f"Reasoning: "
-        f"{mapping.reasoning}"
+        f"Evidence combinations: "
+        f"{len(mapping.evidence_combinations)}"
+    )
+
+    print(
+        f"Reasoning:"
+    )
+
+    print(
+        mapping.reasoning
     )
 
 
@@ -742,7 +1089,9 @@ for element in claim_elements:
 # CLAIM ANALYSIS
 # ============================================================
 
-print("\n=== CLAIM ANALYSIS ===")
+print("\n" + "=" * 70)
+print("CLAIM ANALYSIS")
+print("=" * 70)
 
 analyzer = ClaimAnalyzer()
 
@@ -752,7 +1101,7 @@ analysis = analyzer.analyze(
 )
 
 print(
-    f"Claim: "
+    f"\nClaim: "
     f"{analysis.claim_number}"
 )
 
@@ -767,6 +1116,82 @@ print(
 )
 
 print(
-    f"Reasoning: "
-    f"{analysis.reasoning}"
+    f"\nReasoning:"
 )
+
+print(
+    analysis.reasoning
+)
+
+
+# ============================================================
+# FINAL PIPELINE SUMMARY
+# ============================================================
+
+print("\n" + "=" * 70)
+print("FINAL PIPELINE SUMMARY")
+print("=" * 70)
+
+print(
+    f"\nClaim: "
+    f"{claim.claim_number}"
+)
+
+print(
+    f"Claim elements: "
+    f"{len(claim_elements)}"
+)
+
+print(
+    f"Search results: "
+    f"{total_search_results}"
+)
+
+print(
+    f"Qualified sources: "
+    f"{qualification_stats['qualified']}"
+)
+
+print(
+    f"Successful fetches: "
+    f"{fetch_stats['fetched']}"
+)
+
+print(
+    f"Successful reductions: "
+    f"{fetch_stats['reduced']}"
+)
+
+print(
+    f"Potential evidence: "
+    f"{extraction_stats['evidence_items']}"
+)
+
+print(
+    f"Verified evidence: "
+    f"{total_verified}"
+)
+
+print(
+    f"Supported elements: "
+    f"{mapping_stats['supported']}"
+)
+
+print(
+    f"Unsupported elements: "
+    f"{mapping_stats['unsupported']}"
+)
+
+print(
+    f"FINAL COVERAGE: "
+    f"{analysis.coverage_status}"
+)
+
+print(
+    f"FINAL CONFIDENCE: "
+    f"{analysis.confidence}"
+)
+
+print("\n" + "=" * 70)
+print("PIPELINE COMPLETE")
+print("=" * 70)
