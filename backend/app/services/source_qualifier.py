@@ -5,14 +5,10 @@ from app.models.schemas import SearchResult
 
 class SourceQualifier:
 
-    # --------------------------------------------------
-    # Highest-confidence sources.
-    #
-    # These are primary / official technical sources,
-    # official documentation, standards bodies,
-    # manufacturers, and established technical
-    # organizations.
-    # --------------------------------------------------
+    # ============================================================
+    # TIER 1
+    # Primary / official technical sources
+    # ============================================================
 
     TIER_1_DOMAINS = {
         # Android / Google
@@ -29,7 +25,7 @@ class SourceQualifier:
         "ibm.com",
         "developer.ibm.com",
 
-        # Major semiconductor / hardware vendors
+        # Semiconductor / hardware
         "microchip.com",
         "developerhelp.microchip.com",
         "ti.com",
@@ -50,51 +46,50 @@ class SourceQualifier:
         "juniper.net",
         "nokia.com",
         "ericsson.com",
+
+        # Cloud / infrastructure
         "cloud.google.com",
         "aws.amazon.com",
         "azure.microsoft.com",
 
-        # Open-source project documentation
-        "kubernetes.io",
-        "docs.python.org",
-        "docs.kernel.org",
+        # Technical standards / organizations
         "ietf.org",
         "datatracker.ietf.org",
-
-        # Standards / technical organizations
         "bluetooth.com",
         "3gpp.org",
         "ieee.org",
 
-        # Official GitHub repositories
+        # Open-source technical documentation
+        "kubernetes.io",
+        "docs.python.org",
+        "docs.kernel.org",
+
+        # Official repositories
         "github.com",
     }
 
-    # --------------------------------------------------
-    # Tier 2:
-    # Established technical publications / educational
-    # resources. Useful, but below primary documentation.
-    # --------------------------------------------------
+    # ============================================================
+    # TIER 2
+    # Established technical resources.
+    # ============================================================
 
     TIER_2_DOMAINS = {
         "punchthrough.com",
         "freecodecamp.org",
-        "medium.com",
-        "hackernoon.com",
         "electronics.stackexchange.com",
         "stackoverflow.com",
-        "riptutorial.com",
     }
 
-    # --------------------------------------------------
-    # Tier 3:
-    # Generic blogs / aggregators / content farms.
+    # ============================================================
+    # TIER 3
+    # Generic technical blogs / secondary sources.
     #
-    # These should not normally be used for strong
-    # evidence when better sources are available.
-    # --------------------------------------------------
+    # These are deliberately excluded when minimum_tier=2.
+    # ============================================================
 
     TIER_3_DOMAINS = {
+        "medium.com",
+        "hackernoon.com",
         "codezup.com",
         "stormotion.io",
         "itsectr.com",
@@ -102,21 +97,19 @@ class SourceQualifier:
         "actorsfit.in",
         "programcreek.com",
         "javatips.net",
-        "52im.net",
         "emanual.github.io",
         "codestudy.net",
         "nilhcem.com",
     }
 
-    # --------------------------------------------------
-    # Explicitly excluded domains.
+    # ============================================================
+    # EXPLICITLY EXCLUDED
     #
-    # These are not acceptable evidence sources for the
-    # ClaimLens workflow.
-    # --------------------------------------------------
+    # These should never become evidence sources.
+    # ============================================================
 
     EXCLUDED_DOMAINS = {
-        # Patent databases / patent aggregators
+        # Patent sources
         "patents.google.com",
         "patents.justia.com",
         "patentscope.wipo.int",
@@ -125,7 +118,7 @@ class SourceQualifier:
         "ppubs.uspto.gov",
         "patents.uspto.gov",
 
-        # Social / video platforms
+        # Social / video
         "youtube.com",
         "youtu.be",
         "tiktok.com",
@@ -134,7 +127,7 @@ class SourceQualifier:
         "x.com",
         "twitter.com",
 
-        # Generic Q&A / low-verifiability sources
+        # Generic Q&A
         "quora.com",
 
         # Search engines
@@ -148,11 +141,11 @@ class SourceQualifier:
         minimum_tier: int = 2,
     ):
         """
-        minimum_tier:
+        minimum_tier controls which source tiers are accepted.
 
-        1 = only Tier 1 sources
-        2 = Tier 1 + Tier 2
-        3 = Tier 1 + Tier 2 + Tier 3
+        1 -> Tier 1 only
+        2 -> Tier 1 + Tier 2
+        3 -> Tier 1 + Tier 2 + Tier 3
         """
 
         if minimum_tier not in {
@@ -171,12 +164,19 @@ class SourceQualifier:
         search_result: SearchResult,
     ) -> bool:
 
-        return (
-            self.quality_tier(
-                search_result
-            )
-            <= self.minimum_tier
+        tier = self.quality_tier(
+            search_result
         )
+
+        # None means:
+        # - explicitly excluded, OR
+        # - unknown domain
+        #
+        # Either way, do not qualify it.
+        if tier is None:
+            return False
+
+        return tier <= self.minimum_tier
 
     def quality_tier(
         self,
@@ -190,6 +190,7 @@ class SourceQualifier:
         if not domain:
             return None
 
+        # Explicit exclusions always win.
         if self._matches_domain(
             domain,
             self.EXCLUDED_DOMAINS,
@@ -214,7 +215,7 @@ class SourceQualifier:
         ):
             return 3
 
-        # Unknown domains are deliberately conservative.
+        # Unknown domains are deliberately rejected.
         return None
 
     def quality_label(
@@ -243,18 +244,14 @@ class SourceQualifier:
     ) -> str:
 
         try:
-
             parsed = urlparse(
                 str(url)
             )
-
         except Exception:
-
             return ""
 
         hostname = (
-            parsed.hostname
-            or ""
+            parsed.hostname or ""
         ).lower()
 
         return hostname.removeprefix(
