@@ -35,7 +35,6 @@ claim = Claim(
     ),
 )
 
-
 target = TargetScope(
     company="Nokia",
     product="Cloud",
@@ -45,55 +44,43 @@ target = TargetScope(
 
 print("\n=== CLAIM PARSER ===")
 
-
 parser = ClaimParser()
 
-
 parsed_claim = parser.parse(claim)
-
 
 print(
     f"Elements found: "
     f"{len(parsed_claim.elements)}"
 )
 
-
 for element in parsed_claim.elements:
-
     print(
         f"- {element.id}: "
         f"{element.text}"
     )
-
 
 claim_elements = parsed_claim.elements
 
 
 print("\n=== TECHNOLOGY PROFILER ===")
 
-
 profiler = TechnologyProfiler()
-
 
 technology_profiles = profiler.profile_batch(
     claim_elements,
     target,
 )
 
-
 print(
     f"Profiles generated: "
     f"{len(technology_profiles)}"
 )
 
-
 for profile in technology_profiles:
-
     print(
         f"- {profile.claim_element_id}: "
         f"{profile.core_concept}"
     )
-
 
 profiles_by_id = {
     profile.claim_element_id: profile
@@ -103,9 +90,7 @@ profiles_by_id = {
 
 print("\n=== SEARCH PLANNER ===")
 
-
 planner = SearchPlanner()
-
 
 search_plans = planner.plan_batch(
     claim_elements,
@@ -113,12 +98,10 @@ search_plans = planner.plan_batch(
     technology_profiles,
 )
 
-
 print(
     f"Search plans generated: "
     f"{len(search_plans)}"
 )
-
 
 for search_plan in search_plans:
 
@@ -133,7 +116,6 @@ for search_plan in search_plans:
     )
 
     for query in search_plan.queries:
-
         print(
             f"- [{query.priority}] "
             f"{query.query}"
@@ -142,23 +124,33 @@ for search_plan in search_plans:
 
 print("\n=== SEARCH SERVICE ===")
 
-
 search_service = SearchService()
 
-
 search_results_by_element = {}
-
 
 for search_plan in search_plans:
 
     element_results = []
 
-    for query in search_plan.queries[:2]:
+    prioritized_queries = sorted(
+        search_plan.queries,
+        key=lambda query: query.priority,
+    )
+
+    print(
+        f"\nSearching top "
+        f"{min(2, len(prioritized_queries))} "
+        f"priority queries for element "
+        f"{search_plan.claim_element_id}"
+    )
+
+    for query in prioritized_queries[:2]:
 
         results = search_service.search(query)
 
         print(
             f"\nQuery: {query.query}"
+            f"\nPriority: {query.priority}"
             f"\nResults: {len(results)}"
         )
 
@@ -174,7 +166,6 @@ total_search_results = sum(
     for results in search_results_by_element.values()
 )
 
-
 print(
     f"\nTotal search results collected: "
     f"{total_search_results}"
@@ -185,13 +176,10 @@ print(
     "\n=== PAGE FETCH + CONTENT REDUCTION ==="
 )
 
-
 fetcher = PageFetcher()
 reducer = PageContentReducer()
 
-
 sources_by_element = {}
-
 
 for element in claim_elements:
 
@@ -264,12 +252,9 @@ for element in claim_elements:
 
 print("\n=== BATCH EVIDENCE EXTRACTION ===")
 
-
 extractor = EvidenceExtractor()
 
-
 potential_evidence_by_element = {}
-
 
 for element in claim_elements:
 
@@ -298,7 +283,6 @@ for element in claim_elements:
 
     potential_evidence = []
 
-
     for search_result, evidence_list in zip(
         (
             source
@@ -325,11 +309,9 @@ for element in claim_elements:
                 f"{search_result.title}"
             )
 
-
     potential_evidence_by_element[
         element.id
     ] = potential_evidence
-
 
     print(
         f"\nClaim element {element.id} "
@@ -343,7 +325,6 @@ total_potential_evidence = sum(
     for evidence in potential_evidence_by_element.values()
 )
 
-
 print(
     f"\nTotal potential evidence findings: "
     f"{total_potential_evidence}"
@@ -352,12 +333,9 @@ print(
 
 print("\n=== BATCH EVIDENCE VERIFICATION ===")
 
-
 verifier = EvidenceVerifier()
 
-
 verified_evidence_by_element = {}
-
 
 for element in claim_elements:
 
@@ -381,15 +359,12 @@ for element in claim_elements:
 
         continue
 
-
     verification_results = verifier.verify_batch(
         element,
         potential_evidence,
     )
 
-
     verified_evidence = []
-
 
     for evidence, verification in zip(
         potential_evidence,
@@ -411,7 +386,6 @@ for element in claim_elements:
             f"{verification.confidence}"
         )
 
-
         if verification.evidence_supported:
 
             verified_evidence.append(
@@ -421,11 +395,9 @@ for element in claim_elements:
                 )
             )
 
-
     verified_evidence_by_element[
         element.id
     ] = verified_evidence
-
 
     print(
         f"\nClaim element {element.id} "
@@ -439,7 +411,6 @@ total_verified_evidence = sum(
     for evidence in verified_evidence_by_element.values()
 )
 
-
 print(
     f"\nTotal verified evidence: "
     f"{total_verified_evidence}"
@@ -448,12 +419,9 @@ print(
 
 print("\n=== CLAIM MAPPING ===")
 
-
 mapper = ClaimMapper()
 
-
 element_mappings = []
-
 
 for element in claim_elements:
 
@@ -464,17 +432,14 @@ for element in claim_elements:
         )
     )
 
-
     mapping = mapper.map(
         element,
         verified_evidence,
     )
 
-
     element_mappings.append(
         mapping
     )
-
 
     print(
         f"\nClaim element: "
@@ -504,33 +469,27 @@ for element in claim_elements:
 
 print("\n=== CLAIM ANALYSIS ===")
 
-
 analyzer = ClaimAnalyzer()
-
 
 analysis = analyzer.analyze(
     claim,
     element_mappings,
 )
 
-
 print(
     f"Claim: "
     f"{analysis.claim_number}"
 )
-
 
 print(
     f"Coverage status: "
     f"{analysis.coverage_status}"
 )
 
-
 print(
     f"Confidence: "
     f"{analysis.confidence}"
 )
-
 
 print(
     f"Reasoning: "
