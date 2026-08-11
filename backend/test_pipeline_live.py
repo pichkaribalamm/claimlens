@@ -108,13 +108,17 @@ def mock_gemini_generate(prompt, response_schema):
         }
         """
 
-    if schema_name == "EvidenceVerificationResult":
+    if schema_name == "EvidenceVerificationBatchResult":
         return """
         {
-            "claim_element_id": "1.1",
-            "evidence_supported": false,
-            "confidence": 0.90,
-            "reasoning": "The available excerpt identifies an image signal processor associated with the camera, but it does not explicitly establish that the processor is configured to receive image data."
+            "results": [
+                {
+                    "evidence_index": 0,
+                    "evidence_supported": false,
+                    "confidence": 0.90,
+                    "reasoning": "The available excerpt identifies an image signal processor associated with the camera, but it does not explicitly establish that the processor is configured to receive image data."
+                }
+            ]
         }
         """
 
@@ -254,6 +258,7 @@ with patch(
             )
 
             if not reduced_content:
+
                 print(
                     f"\nSkipping source: "
                     f"{search_result.url}"
@@ -304,12 +309,15 @@ with patch(
 
     verified_evidence = []
 
-    for evidence in potential_evidence:
+    verification_results = verifier.verify_batch(
+        element,
+        potential_evidence,
+    )
 
-        verification = verifier.verify(
-            element,
-            evidence,
-        )
+    for evidence, verification in zip(
+        potential_evidence,
+        verification_results,
+    ):
 
         print(
             f"\nSource: "
