@@ -25,11 +25,17 @@ from app.services.source_qualifier import SourceQualifier
 claim = Claim(
     claim_number="1",
     text=(
-        "A system comprising a Bluetooth Low Energy device "
-        "having a GATT characteristic, wherein the GATT "
-        "characteristic is configured to store a characteristic "
-        "value and permit a connected device to write the "
-        "characteristic value to the GATT characteristic."
+        "A system, comprising: "
+        "a battery module configured to couple to an electrical "
+        "bus via a contactor, wherein the contactor is switched "
+        "to an open state upon a fault condition; and "
+        "a control circuit configured to activate a pyrotechnic "
+        "disconnector to electrically and physically break "
+        "electrical connection between the battery module and "
+        "the electrical bus in response to detecting a current "
+        "flow along an electrical path connecting the battery "
+        "module to the electrical bus after the contactor is "
+        "switched to the open state."
     ),
 )
 
@@ -39,9 +45,9 @@ claim = Claim(
 # ============================================================
 
 target = TargetScope(
-    company="Android",
-    product="BluetoothGatt",
-    technology="Bluetooth Low Energy GATT",
+    company="Chevrolet",
+    product="EV battery",
+    technology="battery disconnect, contactor, pyrotechnic disconnector",
 )
 
 
@@ -53,9 +59,7 @@ print("\n=== CLAIM PARSER ===")
 
 parser = ClaimParser()
 
-parsed_claim = parser.parse(
-    claim
-)
+parsed_claim = parser.parse(claim)
 
 print(
     f"Elements found: "
@@ -69,9 +73,7 @@ for element in parsed_claim.elements:
         f"{element.text}"
     )
 
-claim_elements = (
-    parsed_claim.elements
-)
+claim_elements = parsed_claim.elements
 
 
 # ============================================================
@@ -82,11 +84,9 @@ print("\n=== TECHNOLOGY PROFILER ===")
 
 profiler = TechnologyProfiler()
 
-technology_profiles = (
-    profiler.profile_batch(
-        claim_elements,
-        target,
-    )
+technology_profiles = profiler.profile_batch(
+    claim_elements,
+    target,
 )
 
 print(
@@ -115,12 +115,10 @@ print("\n=== SEARCH PLANNER ===")
 
 planner = SearchPlanner()
 
-search_plans = (
-    planner.plan_batch(
-        claim_elements,
-        target,
-        technology_profiles,
-    )
+search_plans = planner.plan_batch(
+    claim_elements,
+    target,
+    technology_profiles,
 )
 
 print(
@@ -183,10 +181,8 @@ for search_plan in search_plans:
 
         try:
 
-            results = (
-                search_service.search(
-                    query
-                )
+            results = search_service.search(
+                query
             )
 
             print(
@@ -219,9 +215,7 @@ for search_plan in search_plans:
 
     for result in element_results:
 
-        url = str(
-            result.url
-        ).strip()
+        url = str(result.url).strip()
 
         if not url:
             continue
@@ -229,13 +223,9 @@ for search_plan in search_plans:
         if url in seen_urls:
             continue
 
-        seen_urls.add(
-            url
-        )
+        seen_urls.add(url)
 
-        unique_results.append(
-            result
-        )
+        unique_results.append(result)
 
     search_results_by_element[
         search_plan.claim_element_id
@@ -250,9 +240,7 @@ for search_plan in search_plans:
 
 total_search_results = sum(
     len(results)
-    for results in (
-        search_results_by_element.values()
-    )
+    for results in search_results_by_element.values()
 )
 
 print(
@@ -273,84 +261,98 @@ qualifier = SourceQualifier(
 
 qualified_results_by_element = {}
 
+total_qualified_sources = 0
+
 
 for element in claim_elements:
 
-    search_results = (
-        search_results_by_element.get(
-            element.id,
-            [],
-        )
+    search_results = search_results_by_element.get(
+        element.id,
+        [],
     )
 
     qualified_results = []
 
-    rejected_count = 0
+    print(
+        f"\nClaim element {element.id}"
+    )
 
-    for search_result in search_results:
+    for result in search_results:
 
-        tier = qualifier.quality_tier(
-            search_result
-        )
+        try:
 
-        label = qualifier.quality_label(
-            search_result
-        )
+            qualified = qualifier.qualify(
+                result
+            )
 
-        if qualifier.qualify(
-            search_result
-        ):
+            tier = qualifier.quality_tier(
+                result
+            )
 
-            qualified_results.append(
-                search_result
+            label = qualifier.quality_label(
+                result
             )
 
             print(
-                f"\nQUALIFIED [{label}] "
-                f"{search_result.title}"
-            )
-
-            print(
-                f"URL: "
-                f"{search_result.url}"
-            )
-
-        else:
-
-            rejected_count += 1
-
-            print(
-                f"\nREJECTED [{label}] "
-                f"{search_result.title}"
+                f"\nSource: "
+                f"{result.title}"
             )
 
             print(
                 f"URL: "
-                f"{search_result.url}"
+                f"{result.url}"
+            )
+
+            print(
+                f"Quality: "
+                f"{label}"
+            )
+
+            print(
+                f"Tier: "
+                f"{tier}"
+            )
+
+            print(
+                f"Qualified: "
+                f"{qualified}"
+            )
+
+            if qualified:
+
+                qualified_results.append(
+                    result
+                )
+
+        except Exception as exc:
+
+            print(
+                f"\nSource qualification failed: "
+                f"{result.url}"
+            )
+
+            print(
+                f"Reason: {exc}"
             )
 
     qualified_results_by_element[
         element.id
     ] = qualified_results
 
+    total_qualified_sources += len(
+        qualified_results
+    )
+
     print(
-        f"\nClaim element {element.id}: "
-        f"{len(qualified_results)} "
-        f"qualified / "
-        f"{rejected_count} rejected"
+        f"\nQualified sources for element "
+        f"{element.id}: "
+        f"{len(qualified_results)}"
     )
 
-
-total_qualified_results = sum(
-    len(results)
-    for results in (
-        qualified_results_by_element.values()
-    )
-)
 
 print(
     f"\nTotal qualified sources: "
-    f"{total_qualified_results}"
+    f"{total_qualified_sources}"
 )
 
 
@@ -363,23 +365,16 @@ print(
 )
 
 fetcher = PageFetcher()
-
-reducer = PageContentReducer(
-    window_size=450,
-    max_chars=5000,
-    max_passages=6,
-)
+reducer = PageContentReducer()
 
 sources_by_element = {}
 
 
 for element in claim_elements:
 
-    technology_profile = (
-        profiles_by_id[
-            element.id
-        ]
-    )
+    technology_profile = profiles_by_id[
+        element.id
+    ]
 
     search_results = (
         qualified_results_by_element.get(
@@ -390,11 +385,6 @@ for element in claim_elements:
 
     sources_for_extraction = []
 
-    print(
-        f"\nProcessing sources for claim "
-        f"element {element.id}"
-    )
-
     for search_result in search_results:
 
         try:
@@ -403,23 +393,16 @@ for element in claim_elements:
                 search_result
             )
 
-            reduced_content = (
-                reducer.reduce(
-                    element,
-                    page_content,
-                    technology_profile,
-                )
+            reduced_content = reducer.reduce(
+                element,
+                page_content,
+                technology_profile,
             )
 
             if not reduced_content:
 
                 print(
                     f"\nSkipping source: "
-                    f"{search_result.title}"
-                )
-
-                print(
-                    f"URL: "
                     f"{search_result.url}"
                 )
 
@@ -438,34 +421,19 @@ for element in claim_elements:
             )
 
             print(
-                f"\nSource prepared: "
+                f"\nPrepared source: "
                 f"{search_result.title}"
             )
 
             print(
-                f"URL: "
-                f"{search_result.url}"
-            )
-
-            print(
-                f"Original page content: "
-                f"{len(page_content)} chars"
-            )
-
-            print(
-                f"Reduced content: "
-                f"{len(reduced_content)} chars"
+                f"Reduced content length: "
+                f"{len(reduced_content)}"
             )
 
         except Exception as exc:
 
             print(
                 f"\nSkipping source: "
-                f"{search_result.title}"
-            )
-
-            print(
-                f"URL: "
                 f"{search_result.url}"
             )
 
@@ -528,10 +496,7 @@ for element in claim_elements:
 
     potential_evidence = []
 
-    for (
-        source,
-        evidence_list,
-    ) in zip(
+    for search_result, evidence_list in zip(
         (
             source
             for source, _ in sources_for_extraction
@@ -547,54 +512,21 @@ for element in claim_elements:
 
             print(
                 f"\nEvidence found: "
-                f"{source.title}"
+                f"{search_result.title}"
             )
 
             for evidence in evidence_list:
 
                 print(
-                    "\n--- EXTRACTED EVIDENCE ---"
-                )
-
-                print(
-                    f"Source: "
-                    f"{evidence.source_title}"
-                )
-
-                print(
-                    f"URL: "
-                    f"{evidence.url}"
-                )
-
-                print(
-                    f"Evidence type: "
-                    f"{evidence.evidence_type}"
-                )
-
-                print(
-                    f"Relevance: "
-                    f"{evidence.relevance}"
-                )
-
-                print(
-                    f"Excerpt length: "
-                    f"{len(evidence.excerpt)} chars"
-                )
-
-                print(
-                    f"Excerpt:\n"
+                    f"Excerpt: "
                     f"{evidence.excerpt}"
-                )
-
-                print(
-                    "--- END EVIDENCE ---"
                 )
 
         else:
 
             print(
                 f"\nNo evidence found: "
-                f"{source.title}"
+                f"{search_result.title}"
             )
 
     potential_evidence_by_element[
@@ -665,10 +597,7 @@ for element in claim_elements:
 
     verified_evidence = []
 
-    for (
-        evidence,
-        verification,
-    ) in zip(
+    for evidence, verification in zip(
         potential_evidence,
         verification_results,
     ):
@@ -676,6 +605,11 @@ for element in claim_elements:
         print(
             f"\nSource: "
             f"{evidence.source_title}"
+        )
+
+        print(
+            f"Excerpt: "
+            f"{evidence.excerpt}"
         )
 
         print(
@@ -812,51 +746,4 @@ print(
 print(
     f"Reasoning: "
     f"{analysis.reasoning}"
-)
-
-
-# ============================================================
-# FINAL SUMMARY
-# ============================================================
-
-print("\n=== FINAL SUMMARY ===")
-
-print(
-    f"Claim: "
-    f"{claim.claim_number}"
-)
-
-print(
-    f"Claim elements: "
-    f"{len(claim_elements)}"
-)
-
-print(
-    f"Search results: "
-    f"{total_search_results}"
-)
-
-print(
-    f"Qualified sources: "
-    f"{total_qualified_results}"
-)
-
-print(
-    f"Potential evidence: "
-    f"{total_potential_evidence}"
-)
-
-print(
-    f"Verified evidence: "
-    f"{total_verified_evidence}"
-)
-
-print(
-    f"Coverage: "
-    f"{analysis.coverage_status}"
-)
-
-print(
-    f"Confidence: "
-    f"{analysis.confidence}"
 )
