@@ -246,6 +246,7 @@ with patch(
 
             evidence = extractor.extract(
                 element,
+                technology_profile,
                 search_result,
                 page_content,
             )
