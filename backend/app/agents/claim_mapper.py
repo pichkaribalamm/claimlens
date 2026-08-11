@@ -31,44 +31,73 @@ class ClaimMapper:
                 evidence_combinations=[],
             )
 
+        # ========================================================
+        # BUILD EVIDENCE CONTEXT
+        # ========================================================
+
+        evidence_sections = []
+
+        for index, item in enumerate(
+            verified_evidence
+        ):
+
+            evidence_sections.append(
+                f"""
+EVIDENCE INDEX: {index}
+
+SOURCE TITLE:
+{item.evidence.source_title}
+
+SOURCE URL:
+{item.evidence.url}
+
+SOURCE EVIDENCE TYPE:
+{item.evidence.evidence_type}
+
+EXCERPT:
+{item.evidence.excerpt}
+
+INDIVIDUAL SUPPORT LEVEL:
+{item.verification.support_level}
+
+INDIVIDUAL CONFIDENCE:
+{item.verification.confidence}
+
+INDIVIDUAL REASONING:
+{item.verification.reasoning}
+""".strip()
+            )
+
         evidence_text = "\n\n".join(
-            (
-                f"EVIDENCE INDEX: {index}\n"
-                f"Source: {item.evidence.source_title}\n"
-                f"Evidence Type: "
-                f"{item.evidence.evidence_type}\n"
-                f"Excerpt:\n"
-                f"{item.evidence.excerpt}\n"
-                f"Individual Support Level: "
-                f"{item.verification.support_level}\n"
-                f"Individual Confidence: "
-                f"{item.verification.confidence}\n"
-                f"Individual Reasoning: "
-                f"{item.verification.reasoning}"
-            )
-            for index, item in enumerate(
-                verified_evidence
-            )
+            evidence_sections
         )
 
-        prompt = f"""
-You are a patent claim mapping and evidence aggregation
-assistant.
+        # ========================================================
+        # MAPPING PROMPT
+        # ========================================================
 
-Your task is to determine whether the available verified
-evidence, considered collectively, supports the complete
-technical substance of a specific patent claim element.
+        prompt = f"""
+You are a patent claim-element mapping and evidence
+aggregation assistant.
+
+Your task is to determine how strongly the available verified
+technical evidence supports ONE specific patent claim element.
 
 This is an ELEMENT-LEVEL assessment.
 
-Individual evidence has already been evaluated separately.
+The evidence has already gone through individual evidence
+verification.
 
-Your task is now to determine whether multiple pieces of
-evidence can reasonably be combined to establish the claim
-element.
+Your task is NOT to re-verify every excerpt from scratch.
+
+Your task is to determine whether the available evidence,
+individually and collectively, provides a technically reasonable
+basis for the COMPLETE claim element.
 
 
-CLAIM ELEMENT:
+============================================================
+CLAIM ELEMENT
+============================================================
 
 ID:
 {claim_element.id}
@@ -77,97 +106,310 @@ TEXT:
 {claim_element.text}
 
 
-VERIFIED EVIDENCE:
+============================================================
+VERIFIED EVIDENCE
+============================================================
 
 {evidence_text}
 
 
-CORE METHOD:
+============================================================
+CORE PRINCIPLE
+============================================================
 
-First, decompose the claim element into its meaningful
-technical limitations.
+Be LIBERAL about useful evidence but DISCIPLINED about the
+final conclusion.
+
+Do not reject an element simply because:
+
+- one excerpt does not contain the entire limitation;
+- terminology differs;
+- the implementation is described rather than the claim
+  wording;
+- multiple excerpts are needed;
+- a reasonable technical inference is required.
+
+However, do not declare an element supported merely by
+assembling unrelated facts from unrelated sources.
+
+The question is:
+
+"Taken together, do these evidence items provide a technically
+reasonable basis for the complete claim element?"
+
+
+============================================================
+STEP 1 — DECOMPOSE THE CLAIM ELEMENT
+============================================================
+
+First identify the meaningful technical limitations contained
+within the claim element.
 
 Consider:
 
 - components;
+- structures;
 - operations;
-- conditions;
 - inputs;
 - outputs;
-- technical relationships;
+- conditions;
+- relationships;
 - sequencing;
 - dependencies;
-- functional interactions.
+- functional interactions;
+- configuration;
+- causality.
 
-Then determine which evidence item or combination of evidence
-items establishes each limitation.
+Do NOT rewrite the claim.
+
+Use the decomposition internally to evaluate coverage.
 
 
-IMPORTANT: EVIDENCE MAY BE COMBINED
+============================================================
+STEP 2 — MAP EVIDENCE TO LIMITATIONS
+============================================================
 
-Do NOT require a single evidence item to establish the entire
+For each meaningful limitation, determine which evidence item
+or items provide support.
+
+An individual evidence item may support:
+
+- an entire limitation;
+- part of a limitation;
+- a technical relationship;
+- an implementation detail;
+- contextual information.
+
+A single evidence item does NOT need to establish the entire
 claim element.
 
-A claim element may be supported by multiple pieces of
-evidence where:
 
-- one source establishes one technical component;
-- another source establishes another component;
-- another source establishes an operation;
-- another source establishes a condition;
-- another source establishes the relationship between them.
+============================================================
+PARTIAL EVIDENCE IS VALID
+============================================================
 
-The evidence may therefore form a technical evidence chain.
+Do NOT require one excerpt to establish every limitation.
 
+For example, suppose the claim element requires:
 
-EXAMPLE:
+A. a controller;
 
-Suppose a claim element requires:
+B. receiving traffic information;
 
-A → analyzes traffic
+C. determining whether the traffic satisfies criteria; and
 
-B → identifies traffic satisfying criteria
+D. routing the qualifying traffic through a specialized system.
 
-C → routes qualifying traffic to a specialized system
-
-The evidence could consist of:
+The available evidence might contain:
 
 Evidence 0:
-A source describing traffic analysis.
+A source describing the controller receiving traffic
+information.
 
 Evidence 1:
-A source describing identification/classification of
+A source describing classification or determination of
 qualifying traffic.
 
 Evidence 2:
-A source describing diversion of qualifying traffic to
-the specialized system.
+A source describing routing qualifying traffic through a
+specialized system.
 
-If those pieces describe the same relevant product/system
-and form a coherent technical workflow, they may collectively
-support the claim element.
-
-Do NOT reject the element merely because no single excerpt
-contains A + B + C.
+These may collectively support the claim element if they form
+a technically coherent implementation.
 
 
-EVIDENCE COMBINATION RULES:
+============================================================
+TECHNICAL TERMINOLOGY
+============================================================
 
-Evidence may be combined when the combination is technically
-coherent and the relationship between the pieces is reasonably
-supported.
+Do NOT require identical terminology.
 
-Reasonable technical inference is allowed.
+A source may describe a claimed concept using different
+technical terminology.
 
-However, do NOT invent missing technical facts merely to make
-the evidence fit the claim.
+Examples:
 
-The combination must be grounded in the actual evidence.
+"route traffic"
+vs.
+"traffic steering"
+
+"characteristic value"
+vs.
+"attribute value"
+
+"specialized network edge"
+vs.
+"service edge"
+
+"configured to receive"
+vs.
+"accepts"
+
+Different terminology does NOT automatically mean unsupported.
+
+Evaluate the underlying technical substance.
+
+If the terminology represents only a superficial similarity,
+do not treat it as technical support.
 
 
-SUPPORT LEVELS:
+============================================================
+TECHNICAL EQUIVALENCE VS INFERENCE
+============================================================
 
-Use exactly one overall support level:
+Do not automatically classify terminology differences as
+"inferential."
+
+If the source clearly describes the same technical operation
+using different industry terminology, it may still be
+DIRECT or SUPPORTIVE.
+
+Use INFERENTIAL when the evidence establishes underlying facts
+from which a claimed relationship or functionality must
+reasonably be inferred.
+
+Do not invent missing facts.
+
+
+============================================================
+EVIDENCE COMBINATION
+============================================================
+
+Multiple evidence items may be combined.
+
+Combine evidence when:
+
+1. the technical facts are complementary;
+
+2. the combination addresses different limitations of the same
+   claim element;
+
+3. the evidence describes the same product, system,
+   implementation, architecture, or clearly connected
+   technical environment; OR
+
+4. the relationship between the sources is reasonably
+   established by the evidence itself.
+
+A combination does NOT require every source to explicitly
+reference every other source.
+
+However, do not assume unrelated sources describe the same
+implementation merely because they use similar terminology.
+
+
+============================================================
+CROSS-SOURCE EVIDENCE
+============================================================
+
+Cross-source combination is allowed.
+
+But apply this rule:
+
+SIMILAR TECHNOLOGY ≠ SAME IMPLEMENTATION.
+
+For example, two unrelated pages about Bluetooth technology
+should not automatically be combined to construct a particular
+product implementation.
+
+Similarly, two unrelated networking articles should not be
+combined merely because both discuss traffic routing.
+
+Prefer combinations where sources share identifiable
+connections such as:
+
+- same company;
+- same product;
+- same platform;
+- same component;
+- same architecture;
+- same protocol implementation;
+- same documentation family;
+- explicit references between the sources;
+- clearly compatible technical descriptions.
+
+If such a connection cannot reasonably be established,
+describe the evidence as contextual or inferential rather
+than treating it as strong collective proof.
+
+
+============================================================
+RELATIONSHIPS ARE CRITICAL
+============================================================
+
+Pay special attention to relationships in the claim.
+
+Examples:
+
+X receives Y.
+
+X determines Z based on Y.
+
+X performs A in response to B.
+
+X routes Y through Z.
+
+X writes A to B.
+
+X reads A from B.
+
+X communicates with Y.
+
+X controls Y.
+
+A source describing the individual components is NOT
+automatically equivalent to a source describing the claimed
+relationship between those components.
+
+Where the claim depends on a relationship, the evidence should
+support that relationship directly or through a reasonable
+technical inference.
+
+
+============================================================
+DO NOT OVER-PENALIZE MISSING WORDS
+============================================================
+
+The absence of exact claim wording is not itself a technical
+gap.
+
+Do NOT conclude:
+
+"The source does not use the exact phrase, therefore
+unsupported."
+
+Instead ask:
+
+"Does the source disclose the underlying technical function,
+structure, or relationship?"
+
+
+============================================================
+DO NOT OVER-CREDIT GENERIC INFORMATION
+============================================================
+
+Do not treat generic background information as substantive
+support.
+
+Examples of weak evidence:
+
+- generic descriptions of a technology;
+- generic product marketing;
+- broad statements that a system is capable of networking;
+- generic descriptions of a processor;
+- generic statements that Bluetooth supports characteristics.
+
+The evidence must contribute to the actual limitation being
+mapped.
+
+
+============================================================
+SUPPORT LEVEL
+============================================================
+
+Return exactly one overall support level.
+
+Allowed values:
 
 "direct"
 "supportive"
@@ -176,207 +418,287 @@ Use exactly one overall support level:
 "unsupported"
 
 
-DIRECT:
+------------------------------------------------------------
+DIRECT
+------------------------------------------------------------
 
-The complete claim element is explicitly established by the
-available evidence, either through one source or through
-multiple sources that directly disclose the relevant
-limitations and relationships.
+Use DIRECT when the complete claim element is explicitly
+established by the evidence.
 
+This may come from:
 
-SUPPORTIVE:
-
-The evidence collectively provides strong technical
-correspondence to the complete claim element.
-
-Some terminology, implementation detail, or expression may
-differ from the claim, but the technical correspondence is
-clear.
+- one strong source; OR
+- multiple coherent sources where the relevant limitations
+  and relationships are explicitly disclosed.
 
 
-INFERENTIAL:
+------------------------------------------------------------
+SUPPORTIVE
+------------------------------------------------------------
 
-The evidence collectively supports the claim element through
-reasonable technical inference.
+Use SUPPORTIVE when the evidence provides strong technical
+correspondence to the complete claim element, but there are
+minor differences in:
 
-The underlying technical facts are present, but one or more
-relationships or conclusions must be reasonably inferred.
+- terminology;
+- implementation detail;
+- expression;
+- documentation granularity.
 
-This is allowed.
-
-Do not use INFERENTIAL merely because the claim and evidence
-use different terminology.
-
-
-CONTEXTUAL:
-
-The evidence is relevant to the technology or product but
-does not collectively establish the claimed technical
-limitations.
+The technical substance is nevertheless strongly established.
 
 
-UNSUPPORTED:
+------------------------------------------------------------
+INFERENTIAL
+------------------------------------------------------------
 
-The evidence contains a genuine technical gap that prevents
-the claim element from being reasonably established.
+Use INFERENTIAL when the evidence establishes the underlying
+technical facts, but one or more claimed relationships or
+functional conclusions require reasonable technical inference.
+
+Reasonable technical inference is allowed.
+
+Do NOT use INFERENTIAL merely because terminology differs.
 
 
-CRITICAL DISTINCTION:
+------------------------------------------------------------
+CONTEXTUAL
+------------------------------------------------------------
+
+Use CONTEXTUAL when the evidence is relevant to the technology,
+product, or architecture but does not provide enough support
+for the complete claim element.
+
+
+------------------------------------------------------------
+UNSUPPORTED
+------------------------------------------------------------
+
+Use UNSUPPORTED when a genuine material technical limitation
+remains unestablished after considering the available evidence.
+
+
+============================================================
+CRITICAL DISTINCTION
+============================================================
 
 Do NOT treat:
 
 "not explicitly stated"
 
-as automatically meaning:
+as automatically equivalent to:
 
 "unsupported."
 
-The relevant question is:
+Instead determine whether the available evidence provides a
+reasonable technical basis for the limitation.
 
-"Do the available pieces of evidence, taken together, provide
-a technically reasonable basis for the claimed limitation and
-relationships?"
-
-If yes, the element may be SUPPORTIVE or INFERENTIAL.
+At the same time, do not manufacture a missing limitation from
+generic technical knowledge.
 
 
-CROSS-SOURCE EVIDENCE:
+============================================================
+MATERIAL GAPS
+============================================================
 
-Multiple sources may be combined when they describe the same
-product, system, technology, implementation, or technically
-connected environment.
+If an important limitation genuinely remains unsupported,
+the element should normally NOT be marked supported.
 
-Do not assume that unrelated sources describe the same system
-merely because they use similar terminology.
+Examples of material gaps include:
 
-When combining sources, explain why the combination is
-technically coherent.
+- the claimed component is absent;
+- the claimed operation is absent;
+- the claimed input/output relationship is absent;
+- the claimed condition is absent;
+- the claimed causal relationship is absent;
+- the claimed interaction between components is absent.
 
-
-SOURCE RELATIONSHIPS:
-
-Consider the source title, source content, product references,
-technical terminology, and described architecture when
-determining whether evidence belongs to the same technical
-system.
-
-Do not use outside facts to establish a connection that the
-provided evidence does not reasonably support.
+Minor wording differences are NOT material gaps.
 
 
-INDIVIDUAL SUPPORT LEVELS:
+============================================================
+SUPPORTED FLAG
+============================================================
 
-The individual verification levels are informative.
+Set:
 
-A combination may be stronger than any individual evidence
-item.
+supported = TRUE
 
-For example:
+only when the complete claim element is reasonably supported by
+the available evidence.
 
-- inferential + direct may produce supportive element-level
-  support;
-- supportive + supportive may produce strong element-level
-  support;
-- several contextual items should NOT automatically become
-  supporting evidence.
+A claim element can be supported even if:
 
-Do not simply average confidence scores.
+- multiple evidence items are needed;
+- terminology differs;
+- some technical relationships are reasonably inferred;
+- no single source contains the entire element.
 
+Set:
 
-MISSING LIMITATIONS:
+supported = FALSE
 
-If an important claim limitation remains genuinely unsupported
-after considering all evidence, the element should normally
-remain unsupported.
-
-However, do not treat a limitation as missing merely because:
-
-- it uses different terminology;
-- it appears in another evidence item;
-- the evidence describes the implementation rather than the
-  patent-style wording;
-- the relationship can reasonably be inferred from disclosed
-  technical facts.
+when a material limitation or relationship remains genuinely
+unsupported.
 
 
-EVIDENCE INDEXES:
+============================================================
+EVIDENCE TO RETURN
+============================================================
 
-For every evidence combination, use the exact evidence indexes
-provided above.
+The "evidence" field should contain the actual Evidence objects
+that materially contribute to the final element-level conclusion.
 
-Do not invent evidence indexes.
+Do NOT automatically return every evidence item.
 
-The returned "evidence" field must contain the actual evidence
-objects that contribute to the element-level conclusion.
+Exclude evidence that is merely:
 
+- unrelated;
+- generic;
+- duplicative;
+- purely contextual;
+- unnecessary to the conclusion.
 
-REASONING:
+If the element is supported, return the evidence that forms the
+supporting evidence chain.
 
-The reasoning should:
-
-1. Identify the major technical limitations of the claim element.
-2. Explain which evidence item(s) establish each limitation.
-3. Explain how the evidence items relate to one another.
-4. Explain any reasonable technical inference.
-5. Identify any genuine remaining gap.
-6. Explain why the final support level was selected.
-
-Do not simply state:
-
-"Evidence supports the claim."
-
-Explain the evidence chain.
+If the element is unsupported but useful partial evidence exists,
+return the relevant partial evidence that explains the conclusion.
 
 
-CONFIDENCE:
+============================================================
+EVIDENCE COMBINATIONS
+============================================================
+
+Use "evidence_combinations" to explicitly describe meaningful
+groups of evidence considered together.
+
+For each combination:
+
+- evidence_indexes must contain exact indexes from the provided
+  evidence;
+- support_level must describe the strength of that combination;
+- supported indicates whether that combination contributes to
+  supporting the relevant limitation(s);
+- confidence represents the strength of that combination;
+- reasoning explains what the combination establishes.
+
+Do NOT create combinations merely because several evidence items
+exist.
+
+Create a combination only when the items meaningfully work
+together.
+
+
+============================================================
+EVIDENCE INDEX RULES
+============================================================
+
+Only use evidence indexes that were actually provided.
+
+Valid indexes are:
+
+0 through {len(verified_evidence) - 1}
+
+Do not invent indexes.
+
+Every evidence combination must reference only valid indexes.
+
+
+============================================================
+CONFIDENCE
+============================================================
 
 Confidence represents the strength of the COMPLETE
 element-level mapping.
 
-It is NOT an average of individual evidence confidence scores.
+It is NOT the number of evidence items.
+
+It is NOT an average of individual evidence confidence values.
+
 
 Use approximately:
 
-0.90 - 1.00:
-Complete and strong technical support with little ambiguity.
+0.90–1.00
+Complete, strong technical support with little ambiguity.
 
-0.80 - 0.89:
-Strong collective technical support with minor terminology
-or implementation differences.
+0.80–0.89
+Strong collective support with minor terminology or
+implementation differences.
 
-0.70 - 0.79:
+0.70–0.79
 Reasonable collective support requiring some technical
 inference.
 
-0.60 - 0.69:
+0.60–0.69
 Meaningful but incomplete or ambiguous support.
 
-0.00 - 0.59:
+0.00–0.59
 Insufficient support for the complete claim element.
 
 
-IMPORTANT:
+Do not inflate confidence because multiple weak sources exist.
 
-Do not artificially increase confidence merely because there
-are many evidence items.
-
-Three weak sources do not automatically outweigh one genuine
-technical gap.
+A large number of weak sources does not compensate for a
+genuine material technical gap.
 
 
-OUTPUT:
+============================================================
+REASONING
+============================================================
 
-Return exactly the requested structured output.
+The reasoning MUST explain:
 
-The output must:
+1. the major limitations of the claim element;
 
-- preserve the claim_element_id;
-- return supported=True only when the complete element is
-  reasonably supported;
-- return the relevant evidence objects;
-- populate support_level;
-- populate evidence_combinations;
-- provide a clear technical reasoning chain.
+2. which evidence items address those limitations;
+
+3. how evidence items relate to one another;
+
+4. any reasonable technical inference;
+
+5. any genuine remaining gap;
+
+6. why the final support level was selected;
+
+7. why the evidence is technically coherent when multiple
+   sources are combined.
+
+
+Avoid generic statements such as:
+
+"Evidence supports the claim."
+
+Instead explain the actual evidence chain.
+
+
+============================================================
+FINAL DECISION
+============================================================
+
+Before returning the result, internally ask:
+
+1. What are the actual technical limitations?
+
+2. Which evidence addresses each limitation?
+
+3. Are the evidence items technically connected?
+
+4. Is the claimed relationship supported?
+
+5. Am I rejecting evidence only because the wording differs?
+
+6. Am I treating generic technical background as substantive
+   evidence?
+
+7. Am I combining unrelated sources?
+
+8. Is there a genuine material technical gap?
+
+9. Does the final support level accurately reflect the strength
+   of the complete mapping?
+
+Return only the requested structured output.
 """
 
         result = self.llm.generate(
@@ -384,8 +706,80 @@ The output must:
             response_schema=ClaimElementMapping,
         )
 
-        mapping = ClaimElementMapping.model_validate_json(
-            result
+        mapping = (
+            ClaimElementMapping
+            .model_validate_json(result)
         )
+
+        # ========================================================
+        # BASIC OUTPUT VALIDATION
+        # ========================================================
+
+        if (
+            mapping.claim_element_id
+            != claim_element.id
+        ):
+            raise ValueError(
+                "Claim mapper returned an invalid "
+                "claim element ID."
+            )
+
+        valid_evidence_count = len(
+            verified_evidence
+        )
+
+        for combination in (
+            mapping.evidence_combinations
+        ):
+
+            for evidence_index in (
+                combination.evidence_indexes
+            ):
+
+                if (
+                    evidence_index < 0
+                    or evidence_index >= valid_evidence_count
+                ):
+                    raise ValueError(
+                        "Claim mapper returned an invalid "
+                        "evidence index."
+                    )
+
+        # ========================================================
+        # SUPPORT-LEVEL CONSISTENCY
+        # ========================================================
+
+        # A mapping marked supported=True should not simultaneously
+        # claim that the complete element is unsupported/contextual.
+        #
+        # We do not override the model's judgment about the
+        # technical substance, but we prevent internally
+        # contradictory output.
+
+        if (
+            mapping.supported
+            and mapping.support_level
+            in {
+                "contextual",
+                "unsupported",
+            }
+        ):
+            raise ValueError(
+                "Claim mapper returned supported=True with "
+                f"support level '{mapping.support_level}'."
+            )
+
+        if (
+            not mapping.supported
+            and mapping.support_level
+            in {
+                "direct",
+                "supportive",
+            }
+        ):
+            raise ValueError(
+                "Claim mapper returned supported=False with "
+                f"support level '{mapping.support_level}'."
+            )
 
         return mapping
