@@ -94,21 +94,52 @@ def mock_gemini_generate(prompt, response_schema):
         }
         """
 
-    if schema_name == "EvidenceExtractionResult":
-        return """
-        {
-            "evidence": [
+    if schema_name == "EvidenceExtractionBatchResult":
+
+        source_indexes = [
+            int(index)
+            for index in re.findall(
+                r"SOURCE INDEX:\s*(\d+)",
+                prompt,
+            )
+        ]
+
+        results = []
+
+        for index in source_indexes:
+
+            results.append(
                 {
-                    "claim_element_id": "1.1",
-                    "source_title": "Samsung Galaxy S26 Ultra",
-                    "url": "https://www.samsung.com/in/smartphones/galaxy-s26-ultra/",
-                    "excerpt": "Galaxy S26 Ultra's front camera now features an AI image signal processor (ISP)",
-                    "evidence_type": "direct",
-                    "relevance": "The source explicitly identifies an image signal processor associated with the camera."
+                    "source_index": index,
+                    "evidence": [
+                        {
+                            "claim_element_id": "1.1",
+                            "source_title": "Samsung Galaxy S26 Ultra",
+                            "url": (
+                                "https://www.samsung.com/in/"
+                                "smartphones/galaxy-s26-ultra/"
+                            ),
+                            "excerpt": (
+                                "Galaxy S26 Ultra's front camera "
+                                "now features an AI image signal "
+                                "processor (ISP)"
+                            ),
+                            "evidence_type": "direct",
+                            "relevance": (
+                                "The source explicitly identifies "
+                                "an image signal processor associated "
+                                "with the camera."
+                            ),
+                        }
+                    ],
                 }
-            ]
-        }
-        """
+            )
+
+        return json.dumps(
+            {
+                "results": results,
+            }
+        )
 
     if schema_name == "EvidenceVerificationBatchResult":
 
@@ -255,15 +286,14 @@ with patch(
     )
 
     print(
-        "\n=== PAGE FETCH + CONTENT REDUCTION + "
-        "EVIDENCE EXTRACTION ==="
+        "\n=== PAGE FETCH + CONTENT REDUCTION ==="
     )
 
     fetcher = PageFetcher()
     reducer = PageContentReducer()
     extractor = EvidenceExtractor()
 
-    potential_evidence = []
+    sources_for_extraction = []
 
     for search_result in all_search_results[:5]:
 
@@ -292,22 +322,12 @@ with patch(
 
                 continue
 
-            evidence = extractor.extract(
-                element,
-                search_result,
-                reduced_content,
+            sources_for_extraction.append(
+                (
+                    search_result,
+                    reduced_content,
+                )
             )
-
-            if evidence:
-
-                potential_evidence.extend(
-                    evidence
-                )
-
-                print(
-                    f"\nEvidence found: "
-                    f"{search_result.title}"
-                )
 
         except Exception as exc:
 
@@ -321,11 +341,53 @@ with patch(
             )
 
     print(
+        f"\nSources prepared for extraction: "
+        f"{len(sources_for_extraction)}"
+    )
+
+    print(
+        "\n=== BATCH EVIDENCE EXTRACTION ==="
+    )
+
+    extraction_results = extractor.extract_batch(
+        element,
+        sources_for_extraction,
+    )
+
+    potential_evidence = []
+
+    for search_result, evidence_list in zip(
+        (
+            source
+            for source, _ in sources_for_extraction
+        ),
+        extraction_results,
+    ):
+
+        if evidence_list:
+
+            potential_evidence.extend(
+                evidence_list
+            )
+
+            print(
+                f"\nEvidence found: "
+                f"{search_result.title}"
+            )
+
+        else:
+
+            print(
+                f"\nNo evidence found: "
+                f"{search_result.title}"
+            )
+
+    print(
         f"\nPotential evidence findings: "
         f"{len(potential_evidence)}"
     )
 
-    print("\n=== EVIDENCE VERIFICATION ===")
+    print("\n=== BATCH EVIDENCE VERIFICATION ===")
 
     verifier = EvidenceVerifier()
 
