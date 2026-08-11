@@ -12,6 +12,10 @@ class EvidenceVerifier:
     def __init__(self):
         self.llm = GeminiService()
 
+    # ============================================================
+    # SINGLE EVIDENCE VERIFICATION
+    # ============================================================
+
     def verify(
         self,
         claim_element: ClaimElement,
@@ -22,20 +26,26 @@ class EvidenceVerifier:
 You are a patent evidence verification assistant.
 
 Your task is to assess the TECHNICAL VALUE of ONE evidence
-excerpt in relation to a patent claim element.
+excerpt in relation to ONE patent claim element.
 
 You are NOT deciding whether the complete claim element is
 established.
 
-You are NOT deciding whether the complete claim is supported.
+You are NOT deciding whether the complete patent claim is
+supported.
 
-You are evaluating only what this particular evidence excerpt
-contributes to the claim element.
+A later claim-mapping stage will combine multiple evidence
+items.
 
-A later claim-mapping stage will combine multiple evidence items.
+Your job is simply:
+
+"What technical fact or facts does THIS excerpt establish
+that are relevant to THIS claim element?"
 
 
-CLAIM ELEMENT:
+============================================================
+CLAIM ELEMENT
+============================================================
 
 ID:
 {claim_element.id}
@@ -44,7 +54,9 @@ TEXT:
 {claim_element.text}
 
 
-EVIDENCE:
+============================================================
+EVIDENCE
+============================================================
 
 SOURCE:
 {evidence.source_title}
@@ -54,51 +66,55 @@ EXCERPT:
 
 
 ============================================================
-PRIMARY QUESTION
+EVIDENCE SCOPE
 ============================================================
 
-Ask:
-
-"What technical fact or facts does this evidence actually
-establish that are relevant to this claim element?"
-
-The evidence does NOT need to establish the entire claim
+An evidence item does NOT need to establish the entire claim
 element.
 
-It is enough for the evidence to establish one meaningful
-technical limitation, component, operation, condition, input,
-output, or relationship contained within the claim element.
+A claim element may contain multiple technical limitations.
 
-
-============================================================
-IMPORTANT EVIDENCE-SCOPE RULE
-============================================================
-
-DO NOT penalize an evidence item because it fails to establish
-other limitations of the claim element.
-
-For example, if the claim element contains:
+For example:
 
 A + B + C + D
 
-and this evidence clearly establishes:
+If this excerpt establishes:
 
 B + C
 
-then this is still meaningful evidence.
+then the excerpt contains meaningful technical evidence.
 
-Do NOT mark it unsupported merely because A and D are not
-present.
+Do NOT mark it unsupported merely because A and D are absent.
 
-The later mapping stage will determine whether other evidence
-establishes A and D.
+The mapper will later determine whether other evidence covers
+A and D.
+
+
+============================================================
+WHAT TO EVALUATE
+============================================================
+
+Evaluate whether the excerpt establishes one or more meaningful
+technical aspects of the claim element, including:
+
+- component;
+- structure;
+- operation;
+- condition;
+- input;
+- output;
+- technical relationship;
+- functional behavior;
+- implementation detail;
+- interaction;
+- sequencing.
 
 
 ============================================================
 SUPPORT LEVEL
 ============================================================
 
-Return exactly ONE of:
+Return exactly one of:
 
 "direct"
 "supportive"
@@ -107,68 +123,61 @@ Return exactly ONE of:
 "unsupported"
 
 
-------------------------------------------------------------
 DIRECT
-------------------------------------------------------------
+------
 
-Use DIRECT when the excerpt explicitly describes the relevant
+Use "direct" when the excerpt explicitly describes the relevant
 technical limitation, operation, component, condition, or
 relationship.
 
-The wording does NOT need to match the claim word-for-word.
+Exact claim wording is NOT required.
 
 Equivalent technical terminology is acceptable.
 
 
-------------------------------------------------------------
 SUPPORTIVE
-------------------------------------------------------------
+----------
 
-Use SUPPORTIVE when the excerpt strongly corresponds to a
+Use "supportive" when the excerpt strongly corresponds to the
 claimed technical concept or describes a technically equivalent
 implementation.
 
-The relationship should be clear to a technically knowledgeable
-reader even if the source uses different terminology.
+The technical correspondence should be clear to a technically
+knowledgeable reader.
 
 
-------------------------------------------------------------
 INFERENTIAL
-------------------------------------------------------------
+-----------
 
-Use INFERENTIAL when the excerpt provides concrete technical
+Use "inferential" when the excerpt provides concrete technical
 facts from which a relevant claimed concept can reasonably be
 inferred.
 
 Reasonable technical inference is explicitly allowed.
 
-For example, if a source describes the component and its
-operation in a way that naturally establishes the claimed
-function, INFERENTIAL may be appropriate even if the source
-does not state the function using the claim's exact wording.
+The inference must be grounded in information actually present
+in the excerpt.
 
 
-------------------------------------------------------------
 CONTEXTUAL
-------------------------------------------------------------
+----------
 
-Use CONTEXTUAL when the source is genuinely relevant to the
-technology but the excerpt provides little meaningful
-element-specific technical support.
+Use "contextual" when the excerpt is genuinely relevant to the
+technology, product, or architecture but contributes little
+specific technical support to the claim element.
 
 Examples:
 
 - general technology background;
 - general product description;
-- mention of a component without a relevant function;
-- general discussion of the technology.
+- generic capability;
+- mention of a component without the relevant function.
 
 
-------------------------------------------------------------
 UNSUPPORTED
-------------------------------------------------------------
+-----------
 
-Use UNSUPPORTED only when the excerpt provides no meaningful
+Use "unsupported" only when the excerpt provides no meaningful
 technical support for the claim element.
 
 Examples:
@@ -177,113 +186,127 @@ Examples:
 - coincidental terminology;
 - technically different component;
 - technically different operation;
-- claimed concept is contradicted by the excerpt;
-- the conclusion would require a substantial unstated fact.
+- contradictory technical disclosure;
+- conclusion requires a substantial unstated fact.
 
 
 ============================================================
-TECHNICAL EQUIVALENCE
+TECHNICAL TERMINOLOGY
 ============================================================
 
-Accept reasonable technical equivalence.
+Do NOT require word-for-word matching.
 
-The source and claim may use different:
+Do NOT require patent-style language.
+
+Accept reasonable differences in:
 
 - component names;
 - operation names;
 - industry terminology;
 - implementation terminology;
-- sentence structures;
-- descriptions of the same technical behavior.
+- sentence structure;
+- descriptions of technical behavior.
 
-Do not require patent-style language.
+Evaluate the underlying technical substance.
+
+Different terminology alone is NOT a reason to mark evidence
+unsupported.
 
 
 ============================================================
-REASONABLE INFERENCE
+REASONABLE TECHNICAL INFERENCE
 ============================================================
 
-Reasonable technical inference is allowed.
+Reasonable inference is allowed.
 
-Do NOT require the source to explicitly state every consequence
-of a disclosed technical operation.
+Do not require every consequence of a disclosed technical
+operation to be explicitly written in the source.
 
-However, the inference must be grounded in facts actually present
-in the excerpt.
+For example, if the excerpt describes a technical operation
+whose ordinary implementation necessarily or reasonably
+corresponds to part of the claim element, that may be
+inferential support.
 
-Do not invent a missing component, operation, capability, or
-relationship.
+However:
+
+Do NOT invent a missing component.
+
+Do NOT invent a missing operation.
+
+Do NOT invent a missing capability.
+
+Do NOT invent a missing relationship.
+
+Do NOT use outside facts to bridge a substantial technical gap.
 
 
 ============================================================
 OUTSIDE KNOWLEDGE
 ============================================================
 
-Do not use outside knowledge to manufacture evidence.
+Use only the evidence excerpt as factual evidence.
 
-However, ordinary technical interpretation of terminology that
-actually appears in the excerpt is allowed.
+Ordinary technical interpretation of terminology actually
+present in the excerpt is allowed.
 
-For example, if the source uses a recognized technical term for
-an operation, you may interpret that term according to its
-ordinary technical meaning.
-
-Do not add facts that are completely absent from the excerpt.
+Do not import target-specific facts or implementation details
+that are absent from the excerpt.
 
 
 ============================================================
-WHAT YOU MUST NOT DO
+IMPORTANT DISTINCTION
 ============================================================
 
-1. Do not require word-for-word matching.
+The following are NOT automatically unsupported:
 
-2. Do not require identical terminology.
+- different terminology;
+- different sentence structure;
+- implementation-oriented wording;
+- absence of other claim limitations;
+- a reasonable technical inference.
 
-3. Do not reject evidence because it covers only part of the
-   claim element.
+The following ARE reasons for unsupported:
 
-4. Do not decide the complete claim element.
-
-5. Do not decide the complete patent claim.
-
-6. Do not require a single evidence item to establish every
-   limitation.
-
-7. Do not reject reasonable technical inference.
-
-8. Do not assume a technical relationship merely because two
-   components happen to be mentioned.
-
-9. Do not manufacture facts from outside knowledge.
-
-10. Do not treat general technology discussion as direct evidence.
-
-11. Do not claim that the source explicitly states something
-    that it does not state.
+- materially different technical functionality;
+- unrelated subject matter;
+- merely coincidental terminology;
+- a missing technical fact that cannot reasonably be inferred;
+- a claimed relationship that the excerpt does not reasonably
+  establish.
 
 
 ============================================================
-EVIDENCE_SUPPORTED
+EVIDENCE SUPPORTED
 ============================================================
 
 Set:
 
-evidence_supported = TRUE
+evidence_supported = true
 
-when support_level is:
+when the evidence has meaningful technical value:
 
-- direct
-- supportive
-- inferential
+- direct;
+- supportive;
+- inferential.
 
 Set:
 
-evidence_supported = FALSE
+evidence_supported = false
 
-when support_level is:
+when the evidence is:
 
-- contextual
-- unsupported
+- contextual;
+- unsupported.
+
+IMPORTANT:
+
+evidence_supported means:
+
+"This evidence is useful to the later mapping stage."
+
+It does NOT mean:
+
+"The complete claim element has been proven."
 
 
 ============================================================
@@ -292,13 +315,13 @@ CONFIDENCE
 
 Confidence reflects the strength of THIS evidence item.
 
-It does NOT represent confidence that the entire claim element
-is supported.
+It does NOT represent confidence that the complete claim
+element is supported.
 
 Use approximately:
 
 0.90 - 1.00
-Explicit, clear technical disclosure.
+Clear and explicit technical disclosure.
 
 0.80 - 0.89
 Strong technical correspondence or equivalent implementation.
@@ -307,14 +330,14 @@ Strong technical correspondence or equivalent implementation.
 Reasonable technical inference grounded in disclosed facts.
 
 0.40 - 0.69
-Relevant context or limited technical contribution.
+Relevant but limited technical contribution.
 
 0.00 - 0.39
 Little or no meaningful support.
 
 
 Do NOT reduce confidence merely because other claim limitations
-are absent from this evidence.
+are absent from this excerpt.
 
 Do NOT increase confidence merely because the excerpt contains
 many related words.
@@ -334,12 +357,12 @@ Explain:
 
 4. Whether reasonable technical inference is required.
 
-5. If the evidence is contextual or unsupported, identify the
-   specific reason.
+5. If the evidence is contextual or unsupported, identify why.
 
-The reasoning must describe the contribution of THIS evidence.
+The reasoning must describe the contribution of THIS evidence
+item.
 
-Do not state that the complete claim element is proven.
+Do NOT state that the complete claim element is proven.
 
 
 ============================================================
@@ -359,7 +382,42 @@ Return only the requested structured output.
             .model_validate_json(result)
         )
 
+        # ========================================================
+        # OUTPUT VALIDATION
+        # ========================================================
+
+        if (
+            parsed.claim_element_id
+            != claim_element.id
+        ):
+            raise ValueError(
+                "Evidence verification returned an invalid "
+                "claim element ID."
+            )
+
+        expected_supported = (
+            parsed.support_level
+            in {
+                "direct",
+                "supportive",
+                "inferential",
+            }
+        )
+
+        if (
+            parsed.evidence_supported
+            != expected_supported
+        ):
+            raise ValueError(
+                "Evidence verification returned an "
+                "inconsistent evidence_supported value."
+            )
+
         return parsed
+
+    # ============================================================
+    # BATCH EVIDENCE VERIFICATION
+    # ============================================================
 
     def verify_batch(
         self,
@@ -370,35 +428,49 @@ Return only the requested structured output.
         if not evidence_list:
             return []
 
+        evidence_sections = []
+
+        for index, evidence in enumerate(
+            evidence_list
+        ):
+
+            evidence_sections.append(
+                f"""
+EVIDENCE INDEX: {index}
+
+SOURCE:
+{evidence.source_title}
+
+EXCERPT:
+{evidence.excerpt}
+""".strip()
+            )
+
         evidence_text = "\n\n".join(
-            (
-                f"EVIDENCE INDEX: {index}\n"
-                f"SOURCE: {evidence.source_title}\n"
-                f"EXCERPT:\n{evidence.excerpt}"
-            )
-            for index, evidence in enumerate(
-                evidence_list
-            )
+            evidence_sections
         )
 
         prompt = f"""
 You are a patent evidence verification assistant.
 
 Your task is to assess the TECHNICAL VALUE of EACH evidence
-excerpt in relation to a patent claim element.
+excerpt in relation to ONE patent claim element.
 
-Evaluate each evidence item independently.
+Evaluate every evidence item independently.
 
 You are NOT deciding whether the complete claim element is
 established.
 
-You are NOT deciding whether the complete claim is supported.
+You are NOT deciding whether the complete patent claim is
+supported.
 
-A later claim-mapping stage will combine multiple evidence
-items.
+A later claim-mapping stage will combine the individual
+evidence assessments.
 
 
-CLAIM ELEMENT:
+============================================================
+CLAIM ELEMENT
+============================================================
 
 ID:
 {claim_element.id}
@@ -407,7 +479,9 @@ TEXT:
 {claim_element.text}
 
 
-EVIDENCE EXCERPTS:
+============================================================
+EVIDENCE EXCERPTS
+============================================================
 
 {evidence_text}
 
@@ -416,35 +490,18 @@ EVIDENCE EXCERPTS:
 PRIMARY QUESTION
 ============================================================
 
-For EACH evidence item, ask:
+For EACH evidence item ask:
 
-"What technical fact or facts does this evidence establish
+"What technical fact or facts does this excerpt establish
 that are relevant to this claim element?"
+
+
+============================================================
+PARTIAL EVIDENCE IS VALID
+============================================================
 
 An evidence item does NOT need to establish the entire claim
 element.
-
-It may establish one meaningful:
-
-- component;
-- operation;
-- condition;
-- input;
-- output;
-- technical relationship;
-- implementation detail;
-- functional behavior.
-
-The later mapping stage will determine whether multiple pieces
-collectively establish the complete element.
-
-
-============================================================
-CRITICAL RULE
-============================================================
-
-DO NOT mark an evidence item unsupported merely because it does
-not contain every limitation of the claim element.
 
 For example:
 
@@ -456,18 +513,22 @@ Evidence 0:
 
 B + C
 
-Evidence 0 can still be meaningful evidence.
+Evidence 0 is still meaningful evidence.
 
-Assess what Evidence 0 establishes.
+Do NOT mark Evidence 0 unsupported merely because A and D
+are absent.
 
-Do NOT penalize it for the absence of A and D.
+Evaluate what Evidence 0 actually establishes.
+
+The mapper will later determine whether other evidence
+establishes A and D.
 
 
 ============================================================
-SUPPORT LEVELS
+SUPPORT LEVEL
 ============================================================
 
-Use exactly one:
+For EACH evidence item return exactly one:
 
 "direct"
 "supportive"
@@ -476,26 +537,28 @@ Use exactly one:
 "unsupported"
 
 
-DIRECT:
+DIRECT
+------
 
-The evidence explicitly discloses the relevant technical
-limitation, operation, component, condition, or relationship.
+The excerpt explicitly discloses the relevant technical
+limitation, component, operation, condition, or relationship.
 
 Equivalent terminology is acceptable.
 
 
-SUPPORTIVE:
+SUPPORTIVE
+----------
 
-The evidence strongly corresponds to the relevant claimed
-technical concept or describes a technically equivalent
-implementation.
+The excerpt strongly corresponds to the relevant technical
+concept or describes a technically equivalent implementation.
 
 Exact wording is not required.
 
 
-INFERENTIAL:
+INFERENTIAL
+-----------
 
-The evidence provides concrete technical facts from which the
+The excerpt provides concrete technical facts from which the
 relevant claimed concept can reasonably be inferred.
 
 Reasonable technical inference is allowed.
@@ -503,43 +566,60 @@ Reasonable technical inference is allowed.
 The inference must remain grounded in the excerpt.
 
 
-CONTEXTUAL:
+CONTEXTUAL
+----------
 
-The evidence is relevant to the technology but provides little
-meaningful support for the specific claim element.
+The excerpt is relevant to the technology or product but
+provides little meaningful support for the specific claim
+element.
 
-Examples include general background, general product
-description, or a component mentioned without the relevant
-function.
+Examples:
 
-
-UNSUPPORTED:
-
-The evidence provides no meaningful technical support for the
-claim element.
-
-Use this only when there is a genuine technical gap or the
-technology is materially different.
+- general background;
+- general product description;
+- generic capability;
+- component mentioned without the relevant function.
 
 
-============================================================
-TECHNICAL EQUIVALENCE
-============================================================
+UNSUPPORTED
+-----------
 
-Accept:
+Use only when the excerpt provides no meaningful technical
+support.
 
-- equivalent terminology;
-- ordinary industry terminology;
-- different component names;
-- different operation names;
-- different sentence structures;
-- different implementation descriptions;
-- reasonable technical interpretation of terminology actually
-  present in the evidence.
+Examples:
+
+- materially unrelated technology;
+- coincidental terminology;
+- technically different component;
+- technically different operation;
+- substantial missing technical fact.
 
 
 ============================================================
-REASONABLE INFERENCE
+TECHNICAL TERMINOLOGY
+============================================================
+
+Do NOT require:
+
+- word-for-word matching;
+- identical terminology;
+- patent-style language.
+
+Accept reasonable differences in:
+
+- component names;
+- operation names;
+- industry terminology;
+- implementation descriptions;
+- sentence structures;
+- descriptions of the same technical behavior.
+
+Different terminology alone is NOT a reason for unsupported.
+
+
+============================================================
+REASONABLE TECHNICAL INFERENCE
 ============================================================
 
 Do NOT equate:
@@ -550,25 +630,30 @@ with:
 
 "unsupported."
 
-If the disclosed facts reasonably establish a relevant technical
+If the disclosed technical facts reasonably establish a relevant
 concept through ordinary technical interpretation or inference,
 use SUPPORTIVE or INFERENTIAL.
 
-Only use UNSUPPORTED when the missing information creates a
-genuine technical gap.
+However, do not invent:
+
+- components;
+- operations;
+- capabilities;
+- relationships;
+- target-specific facts.
 
 
 ============================================================
 OUTSIDE KNOWLEDGE
 ============================================================
 
-Do not use outside knowledge to manufacture missing facts.
+Use the evidence excerpt as the factual basis.
 
-Ordinary technical interpretation of terminology actually present
-in the evidence is allowed.
+Ordinary technical interpretation of terminology actually
+present in the excerpt is allowed.
 
-Do not assume a component, operation, capability, or relationship
-that is completely absent from the evidence.
+Do not import substantive facts that are completely absent
+from the evidence.
 
 
 ============================================================
@@ -581,51 +666,55 @@ DO NOT
 
 3. Require patent-style language.
 
-4. Require the evidence to establish the entire claim element.
+4. Require one evidence item to establish the complete element.
 
-5. Reject an evidence item because another evidence item would be
-   needed to establish another limitation.
+5. Reject an evidence item because another evidence item would
+   be needed for another limitation.
 
 6. Reject reasonable technical inference.
 
-7. Assume relationships merely because components are mentioned.
+7. Assume a technical relationship merely because two
+   components are mentioned.
 
 8. Introduce substantive facts from outside the excerpt.
 
-9. Treat generic technology discussion as proof of a specific
-   technical limitation.
+9. Treat generic technology discussion as specific technical
+   support.
 
 10. Decide the final element-level mapping.
 
 
 ============================================================
-EVIDENCE_SUPPORTED
+EVIDENCE SUPPORTED
 ============================================================
 
 Set:
 
-evidence_supported = TRUE
+evidence_supported = true
 
 for:
 
-- direct
-- supportive
-- inferential
+- direct;
+- supportive;
+- inferential.
 
 Set:
 
-evidence_supported = FALSE
+evidence_supported = false
 
 for:
 
-- contextual
-- unsupported
+- contextual;
+- unsupported.
 
+This boolean means:
 
-The boolean describes whether the evidence has meaningful
-technical value.
+"This evidence has meaningful technical value for later
+mapping."
 
-It does NOT mean that the complete claim element has been proven.
+It does NOT mean:
+
+"The complete claim element has been proven."
 
 
 ============================================================
@@ -633,6 +722,8 @@ CONFIDENCE
 ============================================================
 
 Confidence reflects the strength of THIS evidence item.
+
+Use approximately:
 
 0.90 - 1.00
 Direct and unambiguous.
@@ -644,14 +735,17 @@ Strong technical correspondence.
 Reasonable technical inference.
 
 0.40 - 0.69
-Relevant but limited/contextual.
+Relevant but limited technical contribution.
 
 0.00 - 0.39
 Unsupported or nearly unsupported.
 
 
-Do NOT reduce confidence simply because other claim limitations
-are absent from this evidence item.
+Do NOT reduce confidence merely because other claim limitations
+are absent from the evidence item.
+
+Do NOT increase confidence merely because the excerpt contains
+many related words.
 
 
 ============================================================
@@ -668,11 +762,9 @@ For every evidence item explain:
 
 4. Whether reasonable inference is required.
 
-5. If contextual or unsupported, what the specific limitation is
-   that prevents stronger support.
+5. If contextual or unsupported, what prevents stronger support.
 
-
-Do not state that the complete claim element is proven.
+Do NOT state that the complete claim element is proven.
 
 
 ============================================================
@@ -681,13 +773,13 @@ OUTPUT REQUIREMENTS
 
 1. Return exactly one result for every evidence index.
 
-2. Preserve every evidence index exactly as provided.
+2. Preserve every evidence index exactly.
 
 3. Do not skip any evidence index.
 
 4. Do not duplicate any evidence index.
 
-5. Evaluate each evidence item independently.
+5. Evaluate every evidence item independently.
 
 6. Populate support_level for every result.
 
@@ -706,6 +798,10 @@ OUTPUT REQUIREMENTS
             .model_validate_json(result)
         )
 
+        # ========================================================
+        # INDEX VALIDATION
+        # ========================================================
+
         expected_indexes = set(
             range(len(evidence_list))
         )
@@ -720,7 +816,6 @@ OUTPUT REQUIREMENTS
         )
 
         if actual_index_set != expected_indexes:
-
             raise ValueError(
                 "Evidence verification batch returned "
                 "invalid evidence indexes."
@@ -729,38 +824,57 @@ OUTPUT REQUIREMENTS
         if len(actual_indexes) != len(
             expected_indexes
         ):
-
             raise ValueError(
                 "Evidence verification batch returned "
                 "duplicate evidence indexes."
             )
+
+        # ========================================================
+        # SUPPORT-LEVEL VALIDATION
+        # ========================================================
 
         results_by_index = {
             item.evidence_index: item
             for item in parsed.results
         }
 
-        return [
-            EvidenceVerificationResult(
-                claim_element_id=claim_element.id,
-                evidence_supported=(
-                    results_by_index[index]
-                    .evidence_supported
-                ),
-                confidence=(
-                    results_by_index[index]
-                    .confidence
-                ),
-                reasoning=(
-                    results_by_index[index]
-                    .reasoning
-                ),
-                support_level=(
-                    results_by_index[index]
-                    .support_level
-                ),
+        normalized_results = []
+
+        for index in range(
+            len(evidence_list)
+        ):
+
+            item = results_by_index[index]
+
+            expected_supported = (
+                item.support_level
+                in {
+                    "direct",
+                    "supportive",
+                    "inferential",
+                }
             )
-            for index in range(
-                len(evidence_list)
+
+            if (
+                item.evidence_supported
+                != expected_supported
+            ):
+                raise ValueError(
+                    "Evidence verification batch returned "
+                    f"inconsistent evidence_supported value "
+                    f"for evidence index {index}."
+                )
+
+            normalized_results.append(
+                EvidenceVerificationResult(
+                    claim_element_id=claim_element.id,
+                    evidence_supported=(
+                        item.evidence_supported
+                    ),
+                    confidence=item.confidence,
+                    reasoning=item.reasoning,
+                    support_level=item.support_level,
+                )
             )
-        ]
+
+        return normalized_results
