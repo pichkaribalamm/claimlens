@@ -3,6 +3,7 @@ from app.models.schemas import (
     SearchResult,
     Evidence,
     EvidenceExtractionResult,
+    TechnologyProfile,
 )
 from app.services.gemini_service import GeminiService
 from app.services.page_content_reducer import PageContentReducer
@@ -17,6 +18,7 @@ class EvidenceExtractor:
     def extract(
         self,
         claim_element: ClaimElement,
+        technology_profile: TechnologyProfile,
         search_result: SearchResult,
         page_content: str,
     ) -> list[Evidence]:
@@ -24,6 +26,7 @@ class EvidenceExtractor:
         reduced_content = self.reducer.reduce(
             claim_element,
             page_content,
+            technology_profile,
         )
 
         if not reduced_content:
