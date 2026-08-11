@@ -39,58 +39,66 @@ def mock_gemini_generate(prompt, response_schema):
         }
         """
 
-    if schema_name == "TechnologyProfile":
+    if schema_name == "TechnologyProfileBatchResult":
         return """
         {
-            "claim_element_id": "1.1",
-            "target": {
-                "company": "Samsung",
-                "product": "Galaxy S26 Ultra",
-                "technology": null
-            },
-            "core_concept": "Processor receiving image data",
-            "technical_concepts": [
-                "image data ingestion",
-                "camera interface",
-                "image signal processing"
-            ],
-            "alternative_terminology": [
-                "image signal processor",
-                "ISP",
-                "camera interface controller"
-            ],
-            "likely_components": [
-                "processor",
-                "image signal processor",
-                "camera interface controller"
-            ],
-            "implementation_hypotheses": [
-                "The target may use a processor or ISP to receive image data from a camera subsystem."
+            "results": [
+                {
+                    "claim_element_id": "1.1",
+                    "target": {
+                        "company": "Samsung",
+                        "product": "Galaxy S26 Ultra",
+                        "technology": null
+                    },
+                    "core_concept": "Processor receiving image data",
+                    "technical_concepts": [
+                        "image data ingestion",
+                        "camera interface",
+                        "image signal processing"
+                    ],
+                    "alternative_terminology": [
+                        "image signal processor",
+                        "ISP",
+                        "camera interface controller"
+                    ],
+                    "likely_components": [
+                        "processor",
+                        "image signal processor",
+                        "camera interface controller"
+                    ],
+                    "implementation_hypotheses": [
+                        "The target may use a processor or ISP to receive image data from a camera subsystem."
+                    ]
+                }
             ]
         }
         """
 
-    if schema_name == "SearchPlan":
+    if schema_name == "SearchPlanBatchResult":
         return """
         {
-            "claim_element_id": "1.1",
-            "queries": [
+            "results": [
                 {
-                    "query": "Samsung Galaxy S26 Ultra processor image data camera ISP",
-                    "rationale": "Find product-specific evidence concerning image data processing.",
-                    "priority": 1
-                },
-                {
-                    "query": "Samsung Galaxy S26 Ultra image signal processor camera",
-                    "rationale": "Find evidence concerning the target's image signal processing architecture.",
-                    "priority": 2
+                    "claim_element_id": "1.1",
+                    "queries": [
+                        {
+                            "query": "Samsung Galaxy S26 Ultra processor image data camera ISP",
+                            "rationale": "Find product-specific evidence concerning image data processing.",
+                            "priority": 1
+                        },
+                        {
+                            "query": "Samsung Galaxy S26 Ultra image signal processor camera",
+                            "rationale": "Find evidence concerning the target's image signal processing architecture.",
+                            "priority": 2
+                        }
+                    ],
+                    "preferred_sources": [
+                        "samsung.com",
+                        "qualcomm.com"
+                    ],
+                    "search_strategy": "Search authoritative product and processor sources for evidence concerning image data processing."
                 }
-            ],
-            "preferred_sources": [
-                "samsung.com",
-                "qualcomm.com"
-            ],
-            "search_strategy": "Search authoritative product and processor sources for evidence concerning image data processing."
+            ]
         }
         """
 
@@ -228,42 +236,65 @@ with patch(
             f"{element.text}"
         )
 
-    element = parsed_claim.elements[0]
+    claim_elements = parsed_claim.elements
 
     print("\n=== TECHNOLOGY PROFILER ===")
 
     profiler = TechnologyProfiler()
 
-    technology_profile = profiler.profile(
-        element,
+    technology_profiles = profiler.profile_batch(
+        claim_elements,
         target,
     )
 
     print(
-        f"Core concept: "
-        f"{technology_profile.core_concept}"
+        f"Profiles generated: "
+        f"{len(technology_profiles)}"
     )
+
+    for profile in technology_profiles:
+        print(
+            f"- {profile.claim_element_id}: "
+            f"{profile.core_concept}"
+        )
+
+    profiles_by_id = {
+        profile.claim_element_id: profile
+        for profile in technology_profiles
+    }
 
     print("\n=== SEARCH PLANNER ===")
 
     planner = SearchPlanner()
 
-    search_plan = planner.plan(
-        element,
+    search_plans = planner.plan_batch(
+        claim_elements,
         target,
-        technology_profile,
+        technology_profiles,
     )
 
     print(
-        f"Queries generated: "
-        f"{len(search_plan.queries)}"
+        f"Search plans generated: "
+        f"{len(search_plans)}"
     )
 
-    for query in search_plan.queries:
+    for search_plan in search_plans:
+
         print(
-            f"- [{query.priority}] "
-            f"{query.query}"
+            f"\nClaim element: "
+            f"{search_plan.claim_element_id}"
         )
+
+        print(
+            f"Queries generated: "
+            f"{len(search_plan.queries)}"
+        )
+
+        for query in search_plan.queries:
+            print(
+                f"- [{query.priority}] "
+                f"{query.query}"
+            )
 
     print("\n=== SEARCH SERVICE ===")
 
@@ -271,16 +302,18 @@ with patch(
 
     all_search_results = []
 
-    for query in search_plan.queries[:2]:
+    for search_plan in search_plans:
 
-        results = search_service.search(query)
+        for query in search_plan.queries[:2]:
 
-        print(
-            f"\nQuery: {query.query}"
-            f"\nResults: {len(results)}"
-        )
+            results = search_service.search(query)
 
-        all_search_results.extend(results)
+            print(
+                f"\nQuery: {query.query}"
+                f"\nResults: {len(results)}"
+            )
+
+            all_search_results.extend(results)
 
     print(
         f"\nTotal search results collected: "
@@ -294,6 +327,9 @@ with patch(
     fetcher = PageFetcher()
     reducer = PageContentReducer()
     extractor = EvidenceExtractor()
+
+    element = claim_elements[0]
+    technology_profile = profiles_by_id[element.id]
 
     sources_for_extraction = []
 
